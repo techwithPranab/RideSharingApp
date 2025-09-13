@@ -34,14 +34,20 @@ interface LoginRequest extends Request {
   };
 }
 
+interface AdminLoginRequest extends Request {
+  body: {
+    email: string;
+    password: string;
+    role?: UserRole;
+  };
+}
+
 interface VerifyOTPRequest extends Request {
   body: {
     phoneNumber: string;
     otp: string;
   };
 }
-
-// Store OTPs temporarily (in production, use Redis)
 const otpStore: Map<string, { otp: string; expiresAt: Date; attempts: number }> = new Map();
 
 /**
@@ -269,25 +275,99 @@ export const login = async (req: LoginRequest, res: Response, next: NextFunction
 };
 
 /**
+ * Admin login with email and password
+ */
+export const adminLogin = async (req: AdminLoginRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return next(new AppError('Validation failed', 400));
+    }
+
+    const { email, password } = req.body;
+
+    // Validate required fields
+    if (!email || !password) {
+      return next(new AppError('Email and password are required', 400));
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      return next(new AppError('Invalid email or password', 401));
+    }
+
+    // Check if user has admin role
+    if (user.role !== UserRole.ADMIN) {
+      return next(new AppError('Access denied. Admin privileges required', 403));
+    }
+
+    // Check if user is active
+    if (user.status === UserStatus.SUSPENDED) {
+      return next(new AppError('Your account has been suspended. Please contact support', 403));
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return next(new AppError('Invalid email or password', 401));
+    }
+
+    // Update user status and last active
+    user.status = UserStatus.ACTIVE;
+    user.lastActiveAt = new Date();
+    await user.save();
+
+    // Generate JWT token
+    const token = signToken(user._id.toString(), user.role);
+
+    logger.info(`Admin logged in: ${user.email} (${user.firstName} ${user.lastName})`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Admin login successful',
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phoneNumber: user.phoneNumber,
+          role: user.role,
+          status: user.status,
+          isPhoneVerified: user.isPhoneVerified,
+          isEmailVerified: user.isEmailVerified,
+          lastActiveAt: user.lastActiveAt
+        },
+        token
+      }
+    });
+  } catch (error) {
+    logger.error('Admin login error:', error);
+    return next(new AppError('Admin login failed', 500));
+  }
+};
+
+/**
  * Send OTP for phone verification or login
  */
 export const sendLoginOTP = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { phoneNumber } = req.body;
-    
+
     if (!phoneNumber) {
       return next(new AppError('Phone number is required', 400));
     }
-    
+
     // Check if user exists
     const user = await User.findOne({ phoneNumber });
     if (!user) {
       return next(new AppError('User not found', 404));
     }
-    
+
     // Generate and send OTP
     await generateAndSendOTP(phoneNumber);
-    
+
     res.status(200).json({
       success: true,
       message: 'OTP sent successfully'

@@ -4,7 +4,7 @@
   "description": "Admin panel for RideSharing App",
   "main": "src/index.tsx",
   "scripts": {
-    "start": "PORT=3002 react-scripts start",
+    "start": "PORT=3001 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

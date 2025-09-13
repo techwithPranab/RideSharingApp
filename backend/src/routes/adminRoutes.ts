@@ -55,7 +55,8 @@ import {
   getFailedPayments,
   retryPayment,
   getPaymentsByUser,
-  getPaymentsByRide
+  getPaymentsByRide,
+  getPlatformProfitAnalysis
 } from '../controllers/admin/paymentController';
 
 // Import subscription management controller
@@ -130,6 +131,7 @@ router.get('/payments/failed/all', logAdminActivity('failed_payments'), getFaile
 router.get('/payments/user/:payerId', logAdminActivity('user_payments'), getPaymentsByUser);
 router.get('/payments/ride/:rideId', logAdminActivity('ride_payments'), getPaymentsByRide);
 router.get('/payments/statistics/overview', logAdminActivity('payment_statistics'), getPaymentStatistics);
+router.get('/payments/profit-analysis', logAdminActivity('profit_analysis'), getPlatformProfitAnalysis);
 
 // Subscription management routes
 router.get('/subscriptions/plans', logAdminActivity('subscription_plans_list'), getSubscriptionPlans);

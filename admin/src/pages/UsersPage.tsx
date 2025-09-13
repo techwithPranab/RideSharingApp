@@ -7,7 +7,7 @@ import {
   Users as UsersIcon,
   X
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 
 interface User {
   _id: string;
@@ -59,7 +59,7 @@ const UsersPage: React.FC = () => {
         ...(roleFilter !== 'all' && { role: roleFilter })
       });
 
-      const response = await axios.get(`/api/admin/users?${params}`);
+      const response = await api.get(`/admin/users?${params}`);
       setUsers(response.data.data.users);
       setTotalPages(response.data.data.pagination.totalPages);
     } catch (err: any) {
@@ -77,7 +77,7 @@ const UsersPage: React.FC = () => {
 
   const handleStatusChange = async (userId: string, newStatus: string) => {
     try {
-      await axios.patch(`/api/admin/users/${userId}/status`, { status: newStatus });
+      await api.patch(`/admin/users/${userId}/status`, { status: newStatus });
       fetchUsers(); // Refresh the list
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update user status');

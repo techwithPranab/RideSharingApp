@@ -25,6 +25,7 @@ import rideRoutes from './routes/rideRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import subscriptionRoutes from './routes/subscriptionRoutes';
 import adminRoutes from './routes/adminRoutes';
+import driverRoutes from './routes/driverRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -84,6 +85,7 @@ app.use('/api/rides', rideRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/driver', driverRoutes);
 
 // Socket.IO connection handling
 socketHandler(io);

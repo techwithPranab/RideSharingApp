@@ -332,6 +332,189 @@ export const getPaymentStatistics = asyncHandler(async (req: Request, res: Respo
 });
 
 /**
+ * Get platform profit analysis
+ */
+export const getPlatformProfitAnalysis = asyncHandler(async (req: Request, res: Response) => {
+  const { period = 'month', startDate, endDate } = req.query;
+
+  let start: Date;
+  let end: Date = new Date();
+
+  if (startDate && endDate) {
+    start = new Date(startDate as string);
+    end = new Date(endDate as string);
+  } else {
+    // Default periods
+    switch (period) {
+      case 'week':
+        start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        start = new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'quarter':
+        start = new Date(end.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case 'year':
+        start = new Date(end.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        start = new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+  }
+
+  // Get all completed ride payments in the period
+  const ridePayments = await Payment.find({
+    type: 'ride_payment',
+    status: PaymentStatus.COMPLETED,
+    createdAt: { $gte: start, $lte: end }
+  }).populate('rideId', 'totalFare distance duration');
+
+  // Calculate platform profit based on commission structure
+  const COMMISSION_RATE = 0.15; // 15% platform commission
+  const PROCESSING_FEE = 2; // ₹2 processing fee per transaction
+
+  let totalRideRevenue = 0;
+  let totalPlatformCommission = 0;
+  let totalProcessingFees = 0;
+  let totalDriverPayouts = 0;
+  let totalPlatformProfit = 0;
+
+  const profitBreakdown = [];
+
+  for (const payment of ridePayments) {
+    const rideFare = payment.amount;
+    const commission = rideFare * COMMISSION_RATE;
+    const driverPayout = rideFare - commission;
+    const processingFee = PROCESSING_FEE;
+    const netProfit = commission - processingFee;
+
+    totalRideRevenue += rideFare;
+    totalPlatformCommission += commission;
+    totalProcessingFees += processingFee;
+    totalDriverPayouts += driverPayout;
+    totalPlatformProfit += netProfit;
+
+    profitBreakdown.push({
+      paymentId: payment.paymentId,
+      rideFare,
+      commission,
+      processingFee,
+      driverPayout,
+      netProfit,
+      date: payment.createdAt
+    });
+  }
+
+  // Get additional revenue streams
+  const [
+    subscriptionRevenue,
+    incentivePayments,
+    refundAmount
+  ] = await Promise.all([
+    // Subscription revenue
+    Payment.aggregate([
+      { $match: { type: 'subscription', status: PaymentStatus.COMPLETED, createdAt: { $gte: start, $lte: end } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]),
+    // Incentive payments (platform spending)
+    Payment.aggregate([
+      { $match: { type: 'incentive', status: PaymentStatus.COMPLETED, createdAt: { $gte: start, $lte: end } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]),
+    // Refunds (platform spending)
+    Payment.aggregate([
+      { $match: { status: PaymentStatus.REFUNDED, createdAt: { $gte: start, $lte: end } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ])
+  ]);
+
+  const additionalRevenue = subscriptionRevenue.length > 0 ? subscriptionRevenue[0].total : 0;
+  const incentiveCosts = incentivePayments.length > 0 ? incentivePayments[0].total : 0;
+  const refundCosts = refundAmount.length > 0 ? refundAmount[0].total : 0;
+
+  // Calculate final profit
+  const totalRevenue = totalRideRevenue + additionalRevenue;
+  const finalProfit = totalPlatformProfit + additionalRevenue - incentiveCosts - refundCosts;
+
+  // Calculate profit margins
+  const profitMargin = totalRevenue > 0 ? (finalProfit / totalRevenue) * 100 : 0;
+  const commissionMargin = totalRideRevenue > 0 ? (totalPlatformCommission / totalRideRevenue) * 100 : 0;
+
+  // Get profit trends (by day)
+  const profitTrends = await Payment.aggregate([
+    {
+      $match: {
+        type: 'ride_payment',
+        status: PaymentStatus.COMPLETED,
+        createdAt: { $gte: start, $lte: end }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+        },
+        dailyRevenue: { $sum: '$amount' },
+        dailyCommission: { $sum: { $multiply: ['$amount', COMMISSION_RATE] } },
+        transactionCount: { $sum: 1 }
+      }
+    },
+    {
+      $project: {
+        date: '$_id',
+        revenue: '$dailyRevenue',
+        commission: '$dailyCommission',
+        profit: { $subtract: ['$dailyCommission', { $multiply: [2, '$transactionCount'] }] },
+        transactions: '$transactionCount'
+      }
+    },
+    { $sort: { date: 1 } }
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      period: {
+        start: start.toISOString(),
+        end: end.toISOString(),
+        duration: Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+      },
+      summary: {
+        totalRevenue: Number(totalRevenue.toFixed(2)),
+        totalPlatformProfit: Number(finalProfit.toFixed(2)),
+        profitMargin: Number(profitMargin.toFixed(2)),
+        commissionMargin: Number(commissionMargin.toFixed(2)),
+        totalTransactions: ridePayments.length
+      },
+      breakdown: {
+        rideRevenue: {
+          totalFare: Number(totalRideRevenue.toFixed(2)),
+          commission: Number(totalPlatformCommission.toFixed(2)),
+          driverPayouts: Number(totalDriverPayouts.toFixed(2)),
+          processingFees: Number(totalProcessingFees.toFixed(2)),
+          netProfit: Number(totalPlatformProfit.toFixed(2))
+        },
+        additionalRevenue: {
+          subscriptions: Number(additionalRevenue.toFixed(2)),
+          incentives: Number((-incentiveCosts).toFixed(2)), // Negative as it's a cost
+          refunds: Number((-refundCosts).toFixed(2)) // Negative as it's a cost
+        }
+      },
+      metrics: {
+        averageRideFare: ridePayments.length > 0 ? Number((totalRideRevenue / ridePayments.length).toFixed(2)) : 0,
+        averageCommission: ridePayments.length > 0 ? Number((totalPlatformCommission / ridePayments.length).toFixed(2)) : 0,
+        averageProfitPerRide: ridePayments.length > 0 ? Number((totalPlatformProfit / ridePayments.length).toFixed(2)) : 0,
+        commissionRate: (COMMISSION_RATE * 100).toFixed(1) + '%',
+        processingFeePerTransaction: PROCESSING_FEE.toFixed(2)
+      },
+      trends: profitTrends,
+      recentTransactions: profitBreakdown.slice(-10) // Last 10 transactions
+    }
+  });
+});
+
+/**
  * Get failed payments for review
  */
 export const getFailedPayments = asyncHandler(async (req: Request, res: Response) => {

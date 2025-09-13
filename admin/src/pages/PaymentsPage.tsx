@@ -18,7 +18,7 @@ import {
   ChevronRight,
   X
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 
 enum PaymentStatus {
   PENDING = 'pending',
@@ -108,7 +108,7 @@ const PaymentsPage: React.FC = () => {
         ...(searchTerm && { search: searchTerm })
       });
 
-      const response = await axios.get(`/api/admin/payments?${params}`);
+      const response = await api.get(`/admin/payments?${params}`);
       setPayments(response.data.data.payments);
       setTotalPages(response.data.data.pagination.totalPages);
     } catch (error) {
@@ -118,7 +118,7 @@ const PaymentsPage: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const response = await axios.get('/api/admin/payments/statistics/overview');
+      const response = await api.get('/admin/payments/statistics/overview');
       setStats(response.data.data.overview);
     } catch (error) {
       console.error('Error loading payment statistics:', error);
@@ -130,7 +130,7 @@ const PaymentsPage: React.FC = () => {
   const handleRefund = async (paymentId: string) => {
     try {
       const amount = refundAmount ? parseFloat(refundAmount) : undefined;
-      await axios.put(`/api/admin/payments/${paymentId}/refund`, {
+      await api.put(`/admin/payments/${paymentId}/refund`, {
         amount,
         reason: refundReason
       });
@@ -146,7 +146,7 @@ const PaymentsPage: React.FC = () => {
 
   const handleRetryPayment = async (paymentId: string) => {
     try {
-      await axios.put(`/api/admin/payments/${paymentId}/retry`);
+      await api.put(`/admin/payments/${paymentId}/retry`);
       loadPayments();
       loadStats();
     } catch (error) {

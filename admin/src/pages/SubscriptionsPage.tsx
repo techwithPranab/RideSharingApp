@@ -10,7 +10,7 @@ import {
   BarChart3,
   Settings
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 
 interface SubscriptionPlan {
   _id: string;
@@ -105,7 +105,6 @@ const SubscriptionsPage: React.FC = () => {
   const fetchPlans = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('adminToken');
       let activeParam;
       if (statusFilter === 'active') {
         activeParam = true;
@@ -113,17 +112,13 @@ const SubscriptionsPage: React.FC = () => {
         activeParam = false;
       }
 
-      const response = await axios.get('/api/admin/subscriptions/plans', {
-        baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3000',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        params: {
-          page: currentPage,
-          limit: itemsPerPage,
-          active: activeParam
-        }
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+        ...(activeParam !== undefined && { active: activeParam.toString() })
       });
+
+      const response = await api.get(`/admin/subscriptions/plans?${params}`);
       setPlans(response.data.data.plans);
     } catch (error) {
       console.error('Error fetching plans:', error);
@@ -135,19 +130,14 @@ const SubscriptionsPage: React.FC = () => {
   const fetchSubscriptions = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await axios.get('/api/admin/subscriptions', {
-        baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3000',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        params: {
-          page: currentPage,
-          limit: itemsPerPage,
-          status: statusFilter,
-          search: searchTerm
-        }
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+        ...(statusFilter !== 'all' && { status: statusFilter }),
+        ...(searchTerm && { search: searchTerm })
       });
+
+      const response = await api.get(`/admin/subscriptions?${params}`);
       setSubscriptions(response.data.data.subscriptions);
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
@@ -159,13 +149,7 @@ const SubscriptionsPage: React.FC = () => {
   const fetchStatistics = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await axios.get('/api/admin/subscriptions/statistics/overview', {
-        baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3000',
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await api.get('/admin/subscriptions/statistics/overview');
       setStatistics(response.data.data);
     } catch (error) {
       console.error('Error fetching statistics:', error);
@@ -176,14 +160,8 @@ const SubscriptionsPage: React.FC = () => {
 
   const handleStatusUpdate = async (subscriptionId: string, newStatus: string) => {
     try {
-      const token = localStorage.getItem('adminToken');
-      await axios.put(`/api/admin/subscriptions/${subscriptionId}/status`, {
+      await api.put(`/admin/subscriptions/${subscriptionId}/status`, {
         status: newStatus
-      }, {
-        baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3000',
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
       });
       fetchSubscriptions();
     } catch (error) {
@@ -193,14 +171,8 @@ const SubscriptionsPage: React.FC = () => {
 
   const handlePlanToggle = async (planId: string, isActive: boolean) => {
     try {
-      const token = localStorage.getItem('adminToken');
-      await axios.put(`/api/admin/subscriptions/plans/${planId}`, {
+      await api.put(`/admin/subscriptions/plans/${planId}`, {
         isActive: !isActive
-      }, {
-        baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3000',
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
       });
       fetchPlans();
     } catch (error) {

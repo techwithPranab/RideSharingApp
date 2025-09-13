@@ -6,10 +6,11 @@ import {
   CreditCard,
   TrendingUp,
   Activity,
-  AlertTriangle,
   CheckCircle
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
+import { Card, LoadingSpinner, ErrorState } from '../components/ui';
+import { MetricCard } from '../components/charts';
 
 interface DashboardStats {
   overview: {
@@ -49,7 +50,7 @@ const DashboardPage: React.FC = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await axios.get('/api/admin/dashboard/stats');
+      const response = await api.get('/admin/dashboard/stats');
       setStats(response.data.data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load dashboard data');
@@ -61,56 +62,16 @@ const DashboardPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-md p-4">
-        <div className="flex">
-          <AlertTriangle className="h-5 w-5 text-red-400" />
-          <div className="ml-3">
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <ErrorState message={error} onRetry={fetchDashboardStats} />;
   }
 
   if (!stats) return null;
-
-  const statCards = [
-    {
-      name: 'Total Users',
-      value: stats.overview.totalUsers,
-      icon: Users,
-      color: 'bg-blue-500',
-      change: `+${stats.growth.userGrowthRate}%`
-    },
-    {
-      name: 'Active Drivers',
-      value: stats.overview.activeDrivers,
-      icon: Car,
-      color: 'bg-green-500',
-      change: `${stats.overview.activeDrivers}/${stats.overview.totalDrivers}`
-    },
-    {
-      name: 'Completed Rides',
-      value: stats.overview.completedRides,
-      icon: MapPin,
-      color: 'bg-purple-500',
-      change: `${stats.overview.completedRides}/${stats.overview.totalRides}`
-    },
-    {
-      name: 'Total Revenue',
-      value: `$${stats.overview.totalRevenue.toLocaleString()}`,
-      icon: CreditCard,
-      color: 'bg-yellow-500',
-      change: `+$${stats.today.revenue.toLocaleString()} today`
-    }
-  ];
 
   return (
     <div className="space-y-6">
@@ -121,24 +82,36 @@ const DashboardPage: React.FC = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((stat) => (
-          <div key={stat.name} className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className={`${stat.color} rounded-lg p-3`}>
-                <stat.icon className="h-6 w-6 text-white" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                <p className="text-sm text-gray-500">{stat.change}</p>
-              </div>
-            </div>
-          </div>
-        ))}
+        <MetricCard
+          title="Total Users"
+          value={stats.overview.totalUsers.toLocaleString()}
+          change={stats.growth.userGrowthRate}
+          icon={Users}
+          color="blue"
+        />
+        <MetricCard
+          title="Active Drivers"
+          value={`${stats.overview.activeDrivers}/${stats.overview.totalDrivers}`}
+          icon={Car}
+          color="green"
+        />
+        <MetricCard
+          title="Completed Rides"
+          value={stats.overview.completedRides.toLocaleString()}
+          icon={MapPin}
+          color="purple"
+        />
+        <MetricCard
+          title="Total Revenue"
+          value={`$${stats.overview.totalRevenue.toLocaleString()}`}
+          change={12.5}
+          icon={CreditCard}
+          color="green"
+        />
       </div>
 
       {/* Today's Summary */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <Card>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Today's Summary</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="text-center">
@@ -154,19 +127,19 @@ const DashboardPage: React.FC = () => {
             <p className="text-sm text-gray-600">New Users</p>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Rides */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <Card>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Rides</h2>
           <div className="space-y-3">
             {stats.recent.rides.slice(0, 5).map((ride: any) => (
               <div key={ride._id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
                 <div>
                   <p className="text-sm font-medium text-gray-900">
-                    {ride.riderId?.firstName} {ride.riderId?.lastName}
+                    {ride.riderId?.firstName || 'Unknown'} {ride.riderId?.lastName || 'User'}
                   </p>
                   <p className="text-xs text-gray-500">
                     {new Date(ride.createdAt).toLocaleDateString()}
@@ -183,10 +156,10 @@ const DashboardPage: React.FC = () => {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
 
         {/* Recent Users */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <Card>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Users</h2>
           <div className="space-y-3">
             {stats.recent.users.slice(0, 5).map((user: any) => (
@@ -207,11 +180,11 @@ const DashboardPage: React.FC = () => {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* System Health */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <Card>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">System Health</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex items-center p-4 bg-green-50 rounded-lg">
@@ -236,7 +209,7 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

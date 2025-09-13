@@ -12,7 +12,7 @@ import {
   DollarSign,
   X
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 
 interface Driver {
   _id: string;
@@ -68,7 +68,7 @@ const DriversPage: React.FC = () => {
         ...(statusFilter !== 'all' && { status: statusFilter })
       });
 
-      const response = await axios.get(`/api/admin/drivers?${params}`);
+      const response = await api.get(`/admin/drivers?${params}`);
       setDrivers(response.data.data.drivers);
       setTotalPages(response.data.data.pagination.totalPages);
     } catch (err: any) {
@@ -87,9 +87,9 @@ const DriversPage: React.FC = () => {
   const handleStatusChange = async (driverId: string, action: 'approve' | 'suspend') => {
     try {
       if (action === 'approve') {
-        await axios.put(`/api/admin/drivers/${driverId}/approve`);
+        await api.put(`/admin/drivers/${driverId}/approve`);
       } else {
-        await axios.put(`/api/admin/drivers/${driverId}/suspend`);
+        await api.put(`/admin/drivers/${driverId}/suspend`);
       }
       fetchDrivers(); // Refresh the list
     } catch (err: any) {

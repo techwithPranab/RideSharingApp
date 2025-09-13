@@ -3,8 +3,7 @@
  * Handles subscription management, validation, and auto-application logic
  */
 
-import { Subscription, ISubscription, SubscriptionStatus, SubscriptionPaymentMethod } from '../models/Subscription';
-import { SubscriptionPlan, ISubscriptionPlan } from '../models/SubscriptionPlan';
+import { Subscription, ISubscription, SubscriptionStatus, SubscriptionPaymentMethod, SubscriptionPlan, ISubscriptionPlan } from '../models/Subscription';
 import { User } from '../models/User';
 import { PaymentMethod } from '../models/Payment';
 import { PaymentService } from './paymentService';

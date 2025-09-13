@@ -123,7 +123,7 @@ const LoginPage: React.FC = () => {
 
           <div className="text-center">
             <p className="text-sm text-gray-600">
-              Demo credentials: admin@example.com / admin123
+              Demo credentials: admin@rideshare.com / admin123
             </p>
           </div>
         </form>

@@ -44,6 +44,18 @@ export enum SubscriptionPaymentMethod {
   NET_BANKING = 'net_banking'
 }
 
+// Subscription plan features
+export interface ISubscriptionPlanFeatures {
+  unlimitedRides: boolean;
+  maxRidesPerPeriod?: number;
+  priorityBooking: boolean;
+  discountedRides: boolean;
+  discountPercentage?: number;
+  freeCancellation: boolean;
+  dedicatedSupport: boolean;
+  earlyAccess: boolean;
+}
+
 // Subscription Plan Schema
 export interface ISubscriptionPlan extends Document {
   name: string;
@@ -51,11 +63,14 @@ export interface ISubscriptionPlan extends Document {
   description: string;
   price: number;
   billingCycle: BillingCycle;
-  features: string[];
+  features: ISubscriptionPlanFeatures;
   maxRides?: number;
   priorityBooking: boolean;
   dedicatedSupport: boolean;
   discountPercentage: number;
+  status: string; // 'active' or 'inactive'
+  currency: string;
+  duration: number; // Duration in days
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -139,10 +154,41 @@ const SubscriptionPlanSchema = new Schema<ISubscriptionPlan>({
     enum: Object.values(BillingCycle),
     required: true
   },
-  features: [{
-    type: String,
-    trim: true
-  }],
+  features: {
+    unlimitedRides: {
+      type: Boolean,
+      default: false
+    },
+    maxRidesPerPeriod: {
+      type: Number,
+      min: 1
+    },
+    priorityBooking: {
+      type: Boolean,
+      default: false
+    },
+    discountedRides: {
+      type: Boolean,
+      default: false
+    },
+    discountPercentage: {
+      type: Number,
+      min: 0,
+      max: 100
+    },
+    freeCancellation: {
+      type: Boolean,
+      default: false
+    },
+    dedicatedSupport: {
+      type: Boolean,
+      default: false
+    },
+    earlyAccess: {
+      type: Boolean,
+      default: false
+    }
+  },
   maxRides: {
     type: Number,
     min: 0
@@ -160,6 +206,21 @@ const SubscriptionPlanSchema = new Schema<ISubscriptionPlan>({
     min: 0,
     max: 100,
     default: 0
+  },
+  status: {
+    type: String,
+    default: 'active',
+    enum: ['active', 'inactive']
+  },
+  currency: {
+    type: String,
+    default: 'INR',
+    enum: ['INR', 'USD', 'EUR']
+  },
+  duration: {
+    type: Number,
+    required: true,
+    min: 1
   },
   isActive: {
     type: Boolean,
@@ -403,12 +464,12 @@ SubscriptionSchema.methods.renew = function(newEndDate: Date): void {
 SubscriptionPlanSchema.statics = {
   // Get active plans
   getActivePlans: function() {
-    return this.find({ isActive: true }).sort({ price: 1 });
+    return this.find({ status: 'active' }).sort({ price: 1 });
   },
 
   // Get plans by type
   getPlansByType: function(type: SubscriptionPlanType) {
-    return this.find({ type, isActive: true });
+    return this.find({ type, status: 'active' });
   }
 };
 

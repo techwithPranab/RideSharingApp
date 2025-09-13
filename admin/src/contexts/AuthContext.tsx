@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 interface AdminUser {
   _id: string;
@@ -46,7 +46,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
       // Set axios default header
-      axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
     }
 
     setIsLoading(false);
@@ -54,10 +54,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post('/api/auth/login', {
+      const response = await api.post('/auth/admin/login', {
         email,
-        password,
-        role: 'admin' // Specify admin role for login
+        password
       });
 
       const { token: newToken, user: userData } = response.data.data;
@@ -70,9 +69,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem('adminUser', JSON.stringify(userData));
 
       // Set axios default header
-      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+      api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Admin login error:', error);
       throw error;
     }
   };
@@ -82,7 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminUser');
-    delete axios.defaults.headers.common['Authorization'];
+    delete api.defaults.headers.common['Authorization'];
   };
 
   const value = useMemo(() => ({

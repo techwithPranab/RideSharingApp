@@ -44,6 +44,15 @@ const loginValidation = [
     .withMessage('Please provide a valid Indian phone number')
 ];
 
+const adminLoginValidation = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address'),
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long')
+];
+
 const otpValidation = [
   body('phoneNumber')
     .matches(/^\+91[6-9]\d{9}$/)
@@ -57,6 +66,7 @@ const otpValidation = [
 // Public routes
 router.post('/register', registerValidation, authController.register);
 router.post('/login', loginValidation, authController.login);
+router.post('/admin/login', adminLoginValidation, authController.adminLogin);
 router.post('/send-otp', loginValidation, authController.sendLoginOTP);
 router.post('/verify-phone', otpValidation, authController.verifyPhoneNumber);
 

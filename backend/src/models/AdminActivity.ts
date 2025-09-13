@@ -21,7 +21,15 @@ export enum AdminAction {
   PAYMENT_REFUND = 'payment_refund',
   SUBSCRIPTION_UPDATE = 'subscription_update',
   SYSTEM_CONFIG_UPDATE = 'system_config_update',
-  REPORT_GENERATE = 'report_generate'
+  REPORT_GENERATE = 'report_generate',
+  // Data access actions
+  DASHBOARD_STATS = 'dashboard_stats',
+  USER_LIST = 'user_list',
+  DRIVER_LIST = 'driver_list',
+  RIDE_LIST = 'ride_list',
+  RIDE_STATISTICS = 'ride_statistics',
+  ACTIVE_RIDES = 'active_rides',
+  SUBSCRIPTION_PLANS_LIST = 'subscription_plans_list'
 }
 
 // Activity severity levels

@@ -18,7 +18,7 @@ import {
   ChevronRight,
   X
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 
 enum RideStatus {
   REQUESTED = 'requested',
@@ -113,7 +113,7 @@ const RidesPage: React.FC = () => {
         ...(searchTerm && { search: searchTerm })
       });
 
-      const response = await axios.get(`/api/admin/rides?${params}`);
+      const response = await api.get(`/admin/rides?${params}`);
       setRides(response.data.data.rides);
       setTotalPages(response.data.data.pagination.totalPages);
     } catch (error) {
@@ -123,7 +123,7 @@ const RidesPage: React.FC = () => {
 
   const loadActiveRides = async () => {
     try {
-      const response = await axios.get('/api/admin/rides/active');
+      const response = await api.get('/admin/rides/active');
       setActiveRides(response.data.data.rides);
     } catch (error) {
       console.error('Error loading active rides:', error);
@@ -132,7 +132,7 @@ const RidesPage: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const response = await axios.get('/api/admin/rides/statistics/overview');
+      const response = await api.get('/admin/rides/statistics/overview');
       setStats(response.data.data.overview);
     } catch (error) {
       console.error('Error loading ride statistics:', error);
@@ -143,7 +143,7 @@ const RidesPage: React.FC = () => {
 
   const handleStatusUpdate = async (rideId: string, newStatus: RideStatus, reason?: string) => {
     try {
-      await axios.put(`/api/admin/rides/${rideId}/status`, {
+      await api.put(`/admin/rides/${rideId}/status`, {
         status: newStatus,
         ...(reason && { cancellationReason: reason })
       });
