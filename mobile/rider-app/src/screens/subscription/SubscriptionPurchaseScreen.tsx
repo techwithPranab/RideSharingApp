@@ -60,8 +60,9 @@ const SubscriptionPurchaseScreen: React.FC = () => {
       } else {
         setError(result.message || 'Failed to load plan details');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load plan details');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load plan details';
+      setError(message);
     }
   };
 
@@ -77,9 +78,10 @@ const SubscriptionPurchaseScreen: React.FC = () => {
           setSelectedPaymentMethod(defaultMethod.type);
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Payment methods are optional, don't set error
-      console.log('Failed to load payment methods:', err);
+      console.warn('Failed to load payment methods:', err);
+      // Failed to load payment methods handled silently
     } finally {
       setLoading(false);
     }
@@ -116,8 +118,9 @@ const SubscriptionPurchaseScreen: React.FC = () => {
       } else {
         setError(result.message || 'Failed to purchase subscription');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to purchase subscription');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to purchase subscription';
+      setError(message);
     } finally {
       setPurchasing(false);
     }

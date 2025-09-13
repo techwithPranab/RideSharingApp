@@ -34,7 +34,7 @@ const AddressBookScreen: React.FC = () => {
       const addressData = response.data.data || [];
       setAddresses(addressData);
     } catch (error) {
-      console.error('Error loading addresses:', error);
+      // Error loading addresses handled with alert
       Alert.alert('Error', 'Failed to load saved addresses');
       setAddresses([]);
     } finally {
@@ -65,7 +65,7 @@ const AddressBookScreen: React.FC = () => {
               await userAPI.deleteSavedAddress(addressId);
               deleteAddressById(addressId);
             } catch (error) {
-              console.error('Error deleting address:', error);
+              // Error deleting address handled with alert
               Alert.alert('Error', 'Failed to delete address');
             }
           },

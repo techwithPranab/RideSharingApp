@@ -37,7 +37,7 @@ const HomeScreen: React.FC = () => {
         setSubscriptionValidation(result.data);
       }
     } catch (error) {
-      console.error('Error checking subscription status:', error);
+      // Error handled silently - could implement user notification here
     }
   };
 

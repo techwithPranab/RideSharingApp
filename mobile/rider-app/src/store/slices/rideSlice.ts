@@ -5,7 +5,7 @@
 
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { rideAPI } from '../../services/api';
-import { Ride, RideRequest, TripHistory } from '../../types';
+import { Ride, RideRequest, TripHistory, RideStatus, Driver, Location, Vehicle } from '../../types';
 
 // Ride state interface
 interface RideState {
@@ -40,8 +40,11 @@ export const requestRide = createAsyncThunk(
     try {
       const response = await rideAPI.requestRide(rideData);
       return response.data.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error?.message || 'Failed to request ride');
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error 
+        ? (error as any).response?.data?.error?.message || 'Failed to request ride'
+        : 'Failed to request ride';
+      return rejectWithValue(message);
     }
   }
 );
@@ -55,8 +58,11 @@ export const getRide = createAsyncThunk(
     try {
       const response = await rideAPI.getRide(rideId);
       return response.data.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error?.message || 'Failed to get ride details');
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error 
+        ? (error as any).response?.data?.error?.message || 'Failed to get ride details'
+        : 'Failed to get ride details';
+      return rejectWithValue(message);
     }
   }
 );
@@ -70,8 +76,11 @@ export const cancelRide = createAsyncThunk(
     try {
       await rideAPI.cancelRide(rideId, reason);
       return rideId;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error?.message || 'Failed to cancel ride');
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error 
+        ? (error as any).response?.data?.error?.message || 'Failed to cancel ride'
+        : 'Failed to cancel ride';
+      return rejectWithValue(message);
     }
   }
 );
@@ -85,8 +94,11 @@ export const rateRide = createAsyncThunk(
     try {
       await rideAPI.rateRide(rideId, rating, review);
       return { rideId, rating, review };
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error?.message || 'Failed to rate ride');
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error 
+        ? (error as any).response?.data?.error?.message || 'Failed to rate ride'
+        : 'Failed to rate ride';
+      return rejectWithValue(message);
     }
   }
 );
@@ -100,8 +112,11 @@ export const getRideHistory = createAsyncThunk(
     try {
       const response = await rideAPI.getRideHistory(page, limit);
       return response.data.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error?.message || 'Failed to get ride history');
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error 
+        ? (error as any).response?.data?.error?.message || 'Failed to get ride history'
+        : 'Failed to get ride history';
+      return rejectWithValue(message);
     }
   }
 );
@@ -115,8 +130,11 @@ export const getActiveRide = createAsyncThunk(
     try {
       const response = await rideAPI.getActiveRide();
       return response.data.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error?.message || 'Failed to get active ride');
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error 
+        ? (error as any).response?.data?.error?.message || 'Failed to get active ride'
+        : 'Failed to get active ride';
+      return rejectWithValue(message);
     }
   }
 );
@@ -136,8 +154,11 @@ export const getFareEstimate = createAsyncThunk(
     try {
       const response = await rideAPI.getFareEstimate(data);
       return response.data.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error?.message || 'Failed to get fare estimate');
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error 
+        ? (error as any).response?.data?.error?.message || 'Failed to get fare estimate'
+        : 'Failed to get fare estimate';
+      return rejectWithValue(message);
     }
   }
 );
@@ -158,9 +179,9 @@ const rideSlice = createSlice({
     },
 
     // Update ride status
-    updateRideStatus: (state, action: PayloadAction<{ rideId: string; status: string }>) => {
+    updateRideStatus: (state, action: PayloadAction<{ rideId: string; status: RideStatus }>) => {
       if (state.currentRide && state.currentRide.id === action.payload.rideId) {
-        state.currentRide.status = action.payload.status as any;
+        state.currentRide.status = action.payload.status;
       }
     },
 
@@ -250,7 +271,24 @@ const rideSlice = createSlice({
       })
       .addCase(getRideHistory.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.rideHistory = (action.payload || []) as unknown as TripHistory[];
+        // Map Ride[] to TripHistory[] since API returns Ride objects but we need TripHistory format
+        state.rideHistory = (action.payload || []).map((ride: Ride) => ({
+          id: ride.id,
+          rideId: ride.rideId,
+          driver: ride.driver || {} as Driver,
+          vehicle: ride.vehicle || {} as Vehicle,
+          pickupLocation: ride.passengers[0]?.pickupLocation || {} as Location,
+          dropoffLocation: ride.passengers[0]?.dropoffLocation || {} as Location,
+          pickupAddress: ride.passengers[0]?.pickupLocation?.address || '',
+          dropoffAddress: ride.passengers[0]?.dropoffLocation?.address || '',
+          fare: ride.totalFare,
+          distance: ride.estimatedDistance,
+          duration: ride.estimatedDuration,
+          status: ride.status,
+          completedAt: ride.completedAt || '',
+          rating: ride.passengers[0]?.rating,
+          review: ride.passengers[0]?.review,
+        }));
         state.error = null;
       })
       .addCase(getRideHistory.rejected, (state, action) => {

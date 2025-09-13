@@ -45,8 +45,9 @@ export const registerUser = createAsyncThunk(
     try {
       const response = await authAPI.register(userData);
       return response.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error?.message || 'Registration failed');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Registration failed';
+      return rejectWithValue(message);
     }
   }
 );
@@ -72,8 +73,11 @@ export const loginUser = createAsyncThunk(
       await AsyncStorage.setItem('token', token);
 
       return { user, token };
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error?.message || 'Login failed');
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error 
+        ? (error as any).response?.data?.error?.message || 'Login failed'
+        : 'Login failed';
+      return rejectWithValue(message);
     }
   }
 );
@@ -87,8 +91,11 @@ export const sendOTP = createAsyncThunk(
     try {
       const response = await authAPI.sendOTP(phoneNumber);
       return response.data.message;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error?.message || 'Failed to send OTP');
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error 
+        ? (error as any).response?.data?.error?.message || 'Failed to send OTP'
+        : 'Failed to send OTP';
+      return rejectWithValue(message);
     }
   }
 );
@@ -114,8 +121,11 @@ export const verifyPhone = createAsyncThunk(
       await AsyncStorage.setItem('token', token);
 
       return { user, token };
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.error?.message || 'Phone verification failed');
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error 
+        ? (error as any).response?.data?.error?.message || 'Phone verification failed'
+        : 'Phone verification failed';
+      return rejectWithValue(message);
     }
   }
 );
@@ -131,10 +141,13 @@ export const logoutUser = createAsyncThunk(
       // Remove token from AsyncStorage
       await AsyncStorage.removeItem('token');
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Even if API call fails, remove local token
       await AsyncStorage.removeItem('token');
-      return rejectWithValue(error.response?.data?.error?.message || 'Logout failed');
+      const message = error instanceof Error && 'response' in error 
+        ? (error as any).response?.data?.error?.message || 'Logout failed'
+        : 'Logout failed';
+      return rejectWithValue(message);
     }
   }
 );
@@ -159,7 +172,7 @@ export const loadToken = createAsyncThunk(
       }
 
       return { user, token };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Remove invalid token
       await AsyncStorage.removeItem('token');
       return rejectWithValue('Token verification failed');

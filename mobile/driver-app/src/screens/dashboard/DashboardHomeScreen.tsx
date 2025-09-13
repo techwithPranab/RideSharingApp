@@ -10,23 +10,32 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 
 // Import types
 import { DashboardStackParamList } from '../../navigation/types';
-import { RootState } from '../../store';
+import { RootState, AppDispatch } from '../../store';
+import { updateOnlineStatus, setOnlineStatus } from '../../store/slices/authSlice';
 
 type DashboardHomeScreenNavigationProp = StackNavigationProp<DashboardStackParamList, 'DashboardHome'>;
 
 const DashboardHomeScreen: React.FC = () => {
   const navigation = useNavigation<DashboardHomeScreenNavigationProp>();
+  const dispatch = useDispatch<AppDispatch>();
   const { driver, isOnline } = useSelector((state: RootState) => state.auth);
 
   const handleToggleOnlineStatus = () => {
-    // TODO: Implement toggle online status
-    console.log('Toggle online status');
+    const newStatus = !isOnline;
+
+    // Update local state immediately for better UX
+    dispatch(setOnlineStatus(newStatus));
+
+    // Call API to update status on server
+    dispatch(updateOnlineStatus(newStatus));
+
+    console.log(`Driver status updated to: ${newStatus ? 'Online' : 'Offline'}`);
   };
 
   const handleViewRideDetails = () => {

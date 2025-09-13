@@ -77,7 +77,8 @@ const PlaceSearchScreen: React.FC = () => {
         setCurrentLocation(location);
       }
     } catch (error) {
-      console.error('Error getting current location:', error);
+      // Error getting current location handled silently
+      console.warn('Error getting current location:', error);
     }
   };
 
@@ -95,19 +96,29 @@ const PlaceSearchScreen: React.FC = () => {
       const searchResults = response.data.data || [];
 
       // Transform API response to our Place format
-      const transformedPlaces: Place[] = searchResults.map((result: any) => ({
-        placeId: result.placeId || result.id,
-        name: result.name || result.description,
-        address: result.address || result.formattedAddress || result.description,
+      const transformedPlaces: Place[] = searchResults.map((result: {
+        placeId?: string;
+        id?: string;
+        name?: string;
+        description?: string;
+        address?: string;
+        formattedAddress?: string;
+        location?: { latitude: number; longitude: number };
+        geometry?: { location?: { lat: number; lng: number } };
+      }) => ({
+        placeId: result.placeId || result.id || '',
+        name: result.name || result.description || '',
+        address: result.address || result.formattedAddress || result.description || '',
         location: {
-          latitude: result.location?.latitude || result.geometry?.location?.lat,
-          longitude: result.location?.longitude || result.geometry?.location?.lng,
+          latitude: result.location?.latitude || result.geometry?.location?.lat || 0,
+          longitude: result.location?.longitude || result.geometry?.location?.lng || 0,
         },
       }));
 
       setPlaces(transformedPlaces);
-    } catch (error: any) {
-      console.error('Error searching places:', error);
+    } catch (error: unknown) {
+      // Error searching places handled with user alert
+      console.warn('Error searching places:', error);
       Alert.alert('Error', 'Failed to search places. Please try again.');
       setPlaces([]);
     } finally {
@@ -137,7 +148,8 @@ const PlaceSearchScreen: React.FC = () => {
       onSelect(currentLocation, address);
       navigation.goBack();
     } catch (error) {
-      console.error('Error reverse geocoding:', error);
+      // Error reverse geocoding handled with fallback
+      console.warn('Error reverse geocoding:', error);
       // Fallback to basic current location
       onSelect(currentLocation, 'Current Location');
       navigation.goBack();

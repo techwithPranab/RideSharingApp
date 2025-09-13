@@ -4,7 +4,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { User, UserRole } from '../models/User';
+import { User, UserRole, UserStatus } from '../models/User';
 import { AppError } from './errorHandler';
 const jwt = require('jsonwebtoken');
 
@@ -156,15 +156,22 @@ export const validateAdminSession = async (req: Request, _res: Response, next: N
 
     // Check if admin account is still active and hasn't been suspended
     const adminUser = await User.findById(req.admin._id);
-    if (!adminUser || adminUser.status !== 'active') {
-      return next(new AppError('Admin account is no longer active', 401));
+    if (!adminUser) {
+      return next(new AppError('Admin account not found', 401));
     }
 
-    // Check for any admin-specific restrictions
-    // TODO: Add admin suspension logic when adminProfile is added to User model
-    // if (adminUser.adminProfile?.isSuspended) {
-    //   return next(new AppError('Admin account is suspended', 403));
-    // }
+    // Check if admin is suspended
+    if (adminUser.status === UserStatus.SUSPENDED) {
+      return next(new AppError('Admin account is suspended. Please contact system administrator', 403));
+    }
+
+    // Check if admin account is active
+    if (adminUser.status !== UserStatus.ACTIVE) {
+      return next(new AppError('Admin account is not active', 401));
+    }
+
+    // Additional admin-specific validations can be added here
+    // e.g., check for admin role expiration, IP restrictions, etc.
 
     next();
   } catch (error) {

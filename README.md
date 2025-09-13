@@ -5,36 +5,72 @@ A comprehensive ride-sharing and carpooling mobile application built with React 
 ## 📱 Features
 
 ### Rider App
-- 🔐 Phone OTP Authentication (Firebase/Custom)
-- 👤 Profile Management & Payment Methods
-- 🗺️ Search & Request Rides with Google Maps
-- 📍 Live Driver Tracking & ETA
-- 🚗 Real-time Ride Matching (Pooling)
-- 💰 Fare Estimate & Split Fare
-- 💬 In-app Masked Chat & Call
-- 🔔 Push Notifications & SMS
-- 📋 Trip History & Receipts
-- ⭐ Rate & Review Drivers
-- 📅 Scheduled & Recurring Rides
+- 🔐 **Phone OTP Authentication** (Firebase/Custom)
+- 👤 **Profile Management** & Payment Methods
+- 🗺️ **Search & Request Rides** with Google Maps
+- 📍 **Live Driver Tracking** & ETA
+- 🚗 **Real-time Ride Matching** (Pooling)
+- 💰 **Fare Estimate** & Split Fare
+- 💬 **In-app Masked Chat** & Call
+- 🔔 **Push Notifications** & SMS
+- 📋 **Trip History** & Receipts
+- ⭐ **Rate & Review Drivers**
+- 📅 **Scheduled & Recurring Rides**
+- 🆘 **Emergency SOS Alerts**
+- 👥 **Emergency Contact Management**
 
 ### Driver App
-- 🆔 Driver KYC & Vehicle Document Upload
-- 🟢 Daily Availability Toggle
-- ✅ Accept/Decline Rides
-- 🧭 Navigation to Pickup/Drop Points
-- 📊 Trip Status Updates
-- 💵 Earnings Dashboard & Payouts
-- 💬 In-app Communication
-- 📈 Trip History & Ratings
+- 🆔 **Driver KYC** & Vehicle Document Upload
+- 🟢 **Daily Availability Toggle**
+- ✅ **Accept/Decline Rides**
+- 🧭 **Navigation to Pickup/Drop Points**
+- 📊 **Trip Status Updates**
+- 💵 **Earnings Dashboard** & Payouts
+- 💬 **In-app Communication**
+- 📈 **Trip History** & Ratings
+- 🆘 **Emergency Response Integration**
 
 ### Backend Services
-- 🔒 JWT Authentication
-- 👥 User Management (Riders & Drivers)
-- 🚖 Intelligent Ride Matching Algorithm
-- 💳 Payment Integration (Razorpay/UPI)
-- 📲 Notification Services
-- 👨‍💼 Admin Dashboard
-- 🔄 Real-time Updates (Socket.IO)
+- 🔒 **JWT Authentication**
+- 👥 **User Management** (Riders & Drivers)
+- 🚖 **Intelligent Ride Matching Algorithm**
+- 💳 **Payment Integration** (Razorpay/UPI)
+- 📲 **Notification Services**
+- 👨‍💼 **Admin Dashboard**
+- 🔄 **Real-time Updates** (Socket.IO)
+- 🆘 **Emergency Services Integration**
+- 📊 **Analytics & Reporting**
+- 🔐 **Admin Role Management**
+
+### Emergency Services
+- 🆘 **SOS Alert System**: Instant emergency notifications
+- 📞 **Automatic Emergency Calls**: Direct connection to local emergency services
+- 👥 **Emergency Contacts**: Automatic notification to user's emergency contacts
+- 📍 **Location Tracking**: Real-time location sharing during emergencies
+- 🚨 **Emergency Response Protocol**: Coordinated response with local authorities
+- 📊 **Incident Management**: Comprehensive emergency incident tracking and reporting
+
+### Admin Features
+- 👨‍💼 **Admin Dashboard**: Comprehensive admin panel for system management
+- 👥 **User Management**: Admin controls for user accounts and permissions
+- 🚖 **Ride Oversight**: Monitor and manage all rides in real-time
+- 📊 **Analytics & Reporting**: Detailed analytics and business intelligence
+- 🔒 **Role-based Access Control**: Secure admin authentication and authorization
+- 🚫 **Account Suspension**: Admin capability to suspend user accounts
+- 📈 **Subscription Management**: Admin oversight of subscription plans and users
+- 📋 **Audit Logging**: Complete audit trail of admin actions
+
+## 📖 Documentation
+
+The project includes comprehensive documentation:
+
+- **[Emergency Services Integration](docs/emergency-services.md)**: Complete guide to SOS alerts, emergency response protocols, and incident management
+- **[Real-time Features](docs/realtime-features.md)**: Socket.IO implementation, location tracking, and messaging
+- **[API Reference](docs/api-reference.md)**: Detailed API endpoint documentation
+- **[Database Schema](docs/database-schema.md)**: MongoDB models and relationships
+- **[Testing Guide](docs/testing.md)**: Unit tests, integration tests, and E2E testing
+- **[Deployment Guide](docs/deployment.md)**: Production deployment and scaling
+- **[Implementation Summary](docs/implementation-summary.md)**: Technical architecture and design decisions
 
 ## 🏗️ Architecture
 
@@ -125,6 +161,11 @@ MSG91_AUTH_KEY=your_msg91_key
 TWILIO_ACCOUNT_SID=your_twilio_account_sid
 TWILIO_AUTH_TOKEN=your_twilio_auth_token
 TWILIO_PHONE_NUMBER=your_twilio_phone_number
+EMERGENCY_SERVICES_API_URL=https://api.emergency-services.local
+EMERGENCY_SERVICES_API_KEY=your_emergency_api_key
+EMERGENCY_DISPATCH_API_URL=https://dispatch.local/api
+EMERGENCY_DISPATCH_API_KEY=your_dispatch_api_key
+EMERGENCY_DISPATCH_PHONE=+1-911
 ```
 
 ### Mobile Apps `.env`

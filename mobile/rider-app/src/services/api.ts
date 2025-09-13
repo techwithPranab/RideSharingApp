@@ -6,7 +6,7 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../constants/config';
-import { APIResponse, User, Ride, LoginForm, RegisterForm, SubscriptionPlan, Subscription, SubscriptionPurchase, SubscriptionValidation } from '../types';
+import { APIResponse, User, Ride, LoginForm, RegisterForm, SubscriptionPlan, Subscription, SubscriptionPurchase, SubscriptionValidation, Address, RideRequest, PaymentMethod, PaymentMethodType } from '../types';
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -27,7 +27,7 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    return Promise.reject(error);
+    return Promise.reject(error instanceof Error ? error : new Error('Request failed'));
   }
 );
 
@@ -42,7 +42,7 @@ api.interceptors.response.use(
       // store.dispatch(clearAuth());
     }
 
-    return Promise.reject(error);
+    return Promise.reject(error instanceof Error ? error : new Error('Request failed'));
   }
 );
 
@@ -114,7 +114,7 @@ export const userAPI = {
   /**
    * Add saved address
    */
-  addSavedAddress: (address: any): Promise<AxiosResponse<APIResponse<any>>> =>
+  addSavedAddress: (address: Omit<Address, 'id'>): Promise<AxiosResponse<APIResponse<Address>>> =>
     api.post('/users/addresses', address),
 
   /**
@@ -129,7 +129,7 @@ export const rideAPI = {
   /**
    * Request a ride
    */
-  requestRide: (rideData: any): Promise<AxiosResponse<APIResponse<Ride>>> =>
+  requestRide: (rideData: RideRequest): Promise<AxiosResponse<APIResponse<Ride>>> =>
     api.post('/rides/request', rideData),
 
   /**
@@ -186,7 +186,17 @@ export const paymentAPI = {
   /**
    * Add payment method
    */
-  addPaymentMethod: (method: any): Promise<AxiosResponse<APIResponse<any>>> =>
+  addPaymentMethod: (method: {
+    type: PaymentMethodType;
+    details: {
+      cardNumber?: string;
+      expiryMonth?: number;
+      expiryYear?: number;
+      cvv?: string;
+      upiId?: string;
+      walletProvider?: string;
+    };
+  }): Promise<AxiosResponse<APIResponse<PaymentMethod>>> =>
     api.post('/payments/methods', method),
 
   /**
@@ -196,9 +206,23 @@ export const paymentAPI = {
     api.delete(`/payments/methods/${methodId}`),
 
   /**
+   * Set default payment method
+   */
+  setDefaultPaymentMethod: (methodId: string): Promise<AxiosResponse<APIResponse<void>>> =>
+    api.put(`/payments/methods/${methodId}/default`),
+
+  /**
    * Process payment
    */
-  processPayment: (data: any): Promise<AxiosResponse<APIResponse<any>>> =>
+  processPayment: (data: {
+    rideId: string;
+    paymentMethodId: string;
+    amount: number;
+  }): Promise<AxiosResponse<APIResponse<{
+    paymentId: string;
+    status: string;
+    transactionId: string;
+  }>>> =>
     api.post('/payments/process', data),
 
   /**

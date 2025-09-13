@@ -34,7 +34,7 @@ const PaymentMethodsScreen: React.FC = () => {
       const paymentMethods = response.data.data || [];
       setMethods(paymentMethods);
     } catch (error) {
-      console.error('Error loading payment methods:', error);
+      // Error loading payment methods handled with alert
       Alert.alert('Error', 'Failed to load payment methods');
       setMethods([]);
     } finally {
@@ -57,7 +57,7 @@ const PaymentMethodsScreen: React.FC = () => {
               setMethods(prev => prev.filter(method => method.id !== methodId));
               Alert.alert('Success', 'Payment method deleted successfully');
             } catch (error) {
-              console.error('Error deleting payment method:', error);
+              // Error deleting payment method handled with alert
               Alert.alert('Error', 'Failed to delete payment method');
             }
           },
@@ -67,8 +67,21 @@ const PaymentMethodsScreen: React.FC = () => {
   };
 
   const handleSetDefault = async (methodId: string) => {
-    // TODO: Implement set default payment method API call
-    Alert.alert('Coming Soon', 'Set default payment method feature will be available soon!');
+    try {
+      await paymentAPI.setDefaultPaymentMethod(methodId);
+      // Update the local state to reflect the change
+      setMethods(prev => prev.map(method => ({
+        ...method,
+        isDefault: method.id === methodId
+      })));
+      Alert.alert('Success', 'Default payment method updated successfully');
+    } catch (error: unknown) {
+      // Error setting default payment method handled with alert
+      const message = error instanceof Error && typeof error === 'object' && error !== null && 'response' in error
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to set default payment method'
+        : 'Failed to set default payment method';
+      Alert.alert('Error', message);
+    }
   };
 
   const getPaymentMethodIcon = (type: string) => {

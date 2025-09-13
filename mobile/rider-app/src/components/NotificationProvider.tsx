@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { View } from 'react-native';
+import { useNavigation } from '../hooks/navigation';
 import Notification, { NotificationData } from '../components/Notification';
 
 interface NotificationContextType {
@@ -32,6 +33,7 @@ interface NotificationProviderProps {
 
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
+  const navigation = useNavigation();
 
   const showNotification = useCallback((notification: Omit<NotificationData, 'id'>) => {
     const id = Date.now().toString();
@@ -81,11 +83,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       duration: 6000,
       actionText: 'Renew',
       onAction: () => {
-        // Navigate to subscription management
-        console.log('Navigate to subscription renewal');
+        // Navigate to subscription management for renewal
+        (navigation as any).navigate('SubscriptionManagement');
       },
     });
-  }, [showNotification]);
+  }, [showNotification, navigation]);
 
   const showSubscriptionExpired = useCallback(() => {
     showNotification({
@@ -96,10 +98,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       actionText: 'Renew Now',
       onAction: () => {
         // Navigate to subscription plans
-        console.log('Navigate to subscription plans');
+        (navigation as any).navigate('SubscriptionPlans');
       },
     });
-  }, [showNotification]);
+  }, [showNotification, navigation]);
 
   const showDiscountApplied = useCallback((discountPercent: number, savedAmount: number) => {
     showNotification({

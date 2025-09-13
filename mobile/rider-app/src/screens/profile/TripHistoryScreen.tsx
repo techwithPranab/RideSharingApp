@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '../../hooks/navigation';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../constants/config';
-import { TripHistory } from '../../types';
+import { TripHistory, RideStatus } from '../../types';
 import { rideAPI } from '../../services/api';
 
 const TripHistoryScreen: React.FC = () => {
@@ -37,7 +37,20 @@ const TripHistoryScreen: React.FC = () => {
       const tripsData = response.data.data || [];
 
       // Transform API response to match our TripHistory interface
-      const transformedTrips: TripHistory[] = tripsData.map((trip: any) => ({
+      const transformedTrips: TripHistory[] = tripsData.map((trip: {
+        id: string;
+        driver?: any;
+        vehicle?: any;
+        pickupLocation?: any;
+        dropoffLocation?: any;
+        totalFare?: number;
+        estimatedDistance?: number;
+        estimatedDuration?: number;
+        status?: string;
+        completedAt?: string;
+        requestedAt?: string;
+        passengers?: any[];
+      }) => ({
         id: trip.id,
         rideId: trip.id,
         driver: trip.driver || {
@@ -88,7 +101,7 @@ const TripHistoryScreen: React.FC = () => {
         fare: trip.totalFare || 0,
         distance: trip.estimatedDistance || 0,
         duration: trip.estimatedDuration || 0,
-        status: trip.status || 'completed',
+        status: (trip.status as RideStatus) || 'completed',
         completedAt: trip.completedAt || trip.requestedAt || new Date().toISOString(),
         rating: trip.passengers?.[0]?.rating || undefined,
         review: trip.passengers?.[0]?.review || undefined
@@ -96,7 +109,8 @@ const TripHistoryScreen: React.FC = () => {
 
       setTrips(transformedTrips);
     } catch (error) {
-      console.error('Failed to load trip history:', error);
+      // Failed to load trip history handled with empty state
+      console.warn('Failed to load trip history:', error);
       // Show empty state on error
       setTrips([]);
     } finally {
@@ -141,8 +155,8 @@ const TripHistoryScreen: React.FC = () => {
     <TouchableOpacity
       style={styles.tripCard}
       onPress={() => {
-        // Navigate to trip details screen (to be implemented)
-        console.log('Trip details:', item.id);
+        // Navigate to trip details screen (to be implemented later)
+        console.log('Navigate to trip details:', item.id);
       }}
     >
       <View style={styles.tripHeader}>

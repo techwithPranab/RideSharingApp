@@ -13,9 +13,11 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { useSelector } from 'react-redux';
 
 // Import types
 import { RidesStackParamList } from '../../navigation/types';
+import { driverAPI } from '../../services/api';
 
 type RideDetailsScreenNavigationProp = StackNavigationProp<RidesStackParamList, 'RideDetails'>;
 type RideDetailsScreenRouteProp = RouteProp<RidesStackParamList, 'RideDetails'>;
@@ -40,6 +42,10 @@ const RideDetailsScreen: React.FC = () => {
 
   const [rideData, setRideData] = useState<RideData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Get driver ID from Redux store
+  const driverId = useSelector((state: any) => state.auth.driver?.id);
 
   useEffect(() => {
     loadRideDetails();
@@ -74,18 +80,63 @@ const RideDetailsScreen: React.FC = () => {
     navigation.goBack();
   };
 
-  const handleAcceptRide = () => {
-    Alert.alert(
-      'Accept Ride',
-      'Are you sure you want to accept this ride?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Accept', onPress: () => {
-          // TODO: Implement ride acceptance logic
-          Alert.alert('Success', 'Ride accepted successfully!');
-        }},
-      ]
-    );
+  const handleAcceptRide = async () => {
+    if (!driverId) {
+      Alert.alert('Error', 'Driver not authenticated');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await driverAPI.acceptRide(rideId, driverId);
+
+      // Update ride status locally
+      setRideData(prev => prev ? { ...prev, status: 'active' } : null);
+
+      Alert.alert('Success', 'Ride accepted successfully!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Navigate to active ride screen or refresh the screen
+            navigation.goBack();
+          }
+        }
+      ]);
+    } catch (error: any) {
+      console.error('Error accepting ride:', error);
+      const errorMessage = error.response?.data?.error?.message || 'Failed to accept ride';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const executeDeclineRide = async () => {
+    if (!driverId) {
+      Alert.alert('Error', 'Driver not authenticated');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await driverAPI.rejectRide(rideId, driverId, 'Driver declined');
+
+      Alert.alert('Ride Declined', 'You have declined this ride.', [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Navigate back to available rides
+            navigation.goBack();
+          }
+        }
+      ]);
+    } catch (error: any) {
+      console.error('Error declining ride:', error);
+      const errorMessage = error.response?.data?.error?.message || 'Failed to decline ride';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleDeclineRide = () => {
@@ -94,10 +145,13 @@ const RideDetailsScreen: React.FC = () => {
       'Are you sure you want to decline this ride?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Decline', style: 'destructive', onPress: () => {
-          // TODO: Implement ride decline logic
-          Alert.alert('Ride Declined', 'You have declined this ride.');
-        }},
+        {
+          text: 'Decline',
+          style: 'destructive',
+          onPress: () => {
+            executeDeclineRide();
+          }
+        },
       ]
     );
   };
@@ -227,14 +281,20 @@ const RideDetailsScreen: React.FC = () => {
             <TouchableOpacity
               style={[styles.actionButton, styles.declineButton]}
               onPress={handleDeclineRide}
+              disabled={actionLoading}
             >
-              <Text style={styles.declineButtonText}>Decline</Text>
+              <Text style={styles.declineButtonText}>
+                {actionLoading ? 'Processing...' : 'Decline'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, styles.acceptButton]}
               onPress={handleAcceptRide}
+              disabled={actionLoading}
             >
-              <Text style={styles.acceptButtonText}>Accept Ride</Text>
+              <Text style={styles.acceptButtonText}>
+                {actionLoading ? 'Processing...' : 'Accept Ride'}
+              </Text>
             </TouchableOpacity>
           </View>
         )}

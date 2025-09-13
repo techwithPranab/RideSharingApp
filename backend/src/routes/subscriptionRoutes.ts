@@ -8,6 +8,7 @@ import { body, param, validationResult } from 'express-validator';
 import { SubscriptionService } from '../services/subscriptionService';
 import { SubscriptionPaymentMethod } from '../models/Subscription';
 import { protect } from '../middleware/auth';
+import { requireAdmin } from '../middleware/adminAuth';
 import { ApiResponse } from '../utils/apiResponse';
 import { logger } from '../utils/logger';
 
@@ -227,12 +228,11 @@ router.post('/apply', [
 });
 
 /**
- * GET /api/subscriptions/stats
+ * GET /api/subscriptions/admin/stats
  * Get subscription statistics (admin only)
  */
-router.get('/admin/stats', async (_req, res) => {
+router.get('/admin/stats', protect, requireAdmin, async (_req, res) => {
   try {
-    // TODO: Add admin role check
     const stats = await SubscriptionService.getSubscriptionStats();
 
     ApiResponse.success(res, {

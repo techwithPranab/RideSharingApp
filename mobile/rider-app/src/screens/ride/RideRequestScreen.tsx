@@ -19,9 +19,9 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../const
 import { Button, Card } from '../../components';
 import { formatters, locationUtils, type LocationData } from '../../utils';
 import { rideAPI, subscriptionAPI } from '../../services/api';
-import { SubscriptionValidation } from '../../types';
+import { SubscriptionValidation, RideRequest, Location } from '../../types';
 
-interface RideRequest {
+interface RideRequestState {
   pickupLocation: LocationData | null;
   dropoffLocation: LocationData | null;
   pickupAddress: string;
@@ -34,7 +34,7 @@ const RideRequestScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAppSelector(state => state.auth);
 
-  const [rideRequest, setRideRequest] = useState<RideRequest>({
+  const [rideRequest, setRideRequest] = useState<RideRequestState>({
     pickupLocation: null,
     dropoffLocation: null,
     pickupAddress: '',
@@ -80,7 +80,8 @@ const RideRequestScreen: React.FC = () => {
         pickupAddress: 'Current Location',
       }));
     } catch (error) {
-      console.error('Error getting location:', error);
+      // Error getting location handled with alert
+      console.warn('Error getting current location:', error);
       Alert.alert('Error', 'Failed to get your current location. Please try again.');
     }
   };
@@ -101,17 +102,18 @@ const RideRequestScreen: React.FC = () => {
       setEstimatedFare(estimate.totalFare);
       setEstimatedDuration(estimate.estimatedDuration);
     } catch (error) {
-      console.error('Error calculating fare:', error);
+      // Error calculating fare handled with fallback calculation
+      console.warn('Error calculating fare estimate:', error);
       // Fallback to basic calculation if API fails
       const distance = locationUtils.calculateDistance(
         rideRequest.pickupLocation,
         rideRequest.dropoffLocation
       );
-      const baseFare = 50;
-      const perKmRate = rideRequest.rideType === 'regular' ? 15 : 10;
-      const fare = baseFare + (distance * perKmRate);
-      setEstimatedFare(Math.round(fare));
-      setEstimatedDuration(Math.round(distance * 2));
+      const baseFare = 50; // Base fare in rupees
+      const perKmRate = 15; // Rate per kilometer
+      const estimatedFare = baseFare + (distance * perKmRate);
+      setEstimatedFare(estimatedFare);
+      setEstimatedDuration(distance * 2); // Rough estimate: 2 minutes per km
     }
   };
 
@@ -139,7 +141,8 @@ const RideRequestScreen: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Error validating subscription:', error);
+      // Error validating subscription handled silently
+      console.warn('Error validating subscription:', error);
       setSubscriptionValidation(null);
       setDiscountedFare(null);
     }
@@ -177,22 +180,28 @@ const RideRequestScreen: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const rideData = {
-        riderId: user.id,
+      const distance = locationUtils.calculateDistance(
+        rideRequest.pickupLocation,
+        rideRequest.dropoffLocation
+      );
+
+      const rideData: RideRequest = {
         pickupLocation: {
-          latitude: rideRequest.pickupLocation.latitude,
-          longitude: rideRequest.pickupLocation.longitude,
+          type: 'Point',
+          coordinates: [rideRequest.pickupLocation.longitude, rideRequest.pickupLocation.latitude],
           address: rideRequest.pickupAddress,
         },
         dropoffLocation: {
-          latitude: rideRequest.dropoffLocation.latitude,
-          longitude: rideRequest.dropoffLocation.longitude,
+          type: 'Point',
+          coordinates: [rideRequest.dropoffLocation.longitude, rideRequest.dropoffLocation.latitude],
           address: rideRequest.dropoffAddress,
         },
-        rideType: rideRequest.rideType,
-        estimatedFare: discountedFare || estimatedFare,
-        subscriptionDiscount: subscriptionValidation?.discount || 0,
-        scheduledTime: rideRequest.scheduledTime?.toISOString(),
+        pickupAddress: rideRequest.pickupAddress,
+        dropoffAddress: rideRequest.dropoffAddress,
+        isPooled: rideRequest.rideType === 'pooled',
+        estimatedFare: discountedFare || estimatedFare || undefined,
+        estimatedDistance: distance,
+        estimatedDuration: estimatedDuration || undefined,
       };
 
       const response = await rideAPI.requestRide(rideData);
@@ -225,12 +234,12 @@ const RideRequestScreen: React.FC = () => {
       setEstimatedFare(null);
       setEstimatedDuration(null);
 
-    } catch (error: any) {
-      console.error('Error requesting ride:', error);
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Failed to request ride. Please try again.'
-      );
+    } catch (error: unknown) {
+      // Error requesting ride handled with alert
+      const message = error instanceof Error && typeof error === 'object' && error !== null && 'response' in error
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to request ride. Please try again.'
+        : 'Failed to request ride. Please try again.';
+      Alert.alert('Error', message);
     } finally {
       setIsLoading(false);
     }

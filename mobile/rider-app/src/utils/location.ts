@@ -45,6 +45,7 @@ export const locationUtils = {
       );
       return granted === PermissionsAndroid.RESULTS.GRANTED;
     } catch (err) {
+      // Location permission error handled silently
       console.warn('Location permission error:', err);
       return false;
     }
@@ -73,8 +74,9 @@ export const locationUtils = {
             accuracy: position.coords.accuracy || undefined,
             timestamp: position.timestamp,
           });
-        } catch (error: any) {
-          reject(new Error(error.message || 'Failed to get location'));
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Failed to get location';
+          reject(new Error(message));
         }
       })();
     });
@@ -85,7 +87,7 @@ export const locationUtils = {
    */
   watchLocation: (
     callback: (location: LocationData) => void,
-    errorCallback?: (error: any) => void
+    errorCallback?: (error: unknown) => void
   ): Promise<{ remove: () => void }> => {
     return Location.watchPositionAsync(
       {
