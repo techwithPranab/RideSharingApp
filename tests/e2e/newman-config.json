@@ -1,0 +1,19 @@
+{
+  "collection": "RideSharing_API_Postman_Collection.json",
+  "environment": "RideSharing_Postman_Environment.postman_environment.json",
+  "reporters": ["cli", "json", "html"],
+  "reporter-json-export": "../../test-results/test-results.json",
+  "reporter-html-export": "../../test-results/test-results.html",
+  "timeout": 30000,
+  "delayRequest": 1000,
+  "bail": false,
+  "suppressExitCode": false,
+  "ignoreRedirects": false,
+  "iterationCount": 1,
+  "iterationData": null,
+  "globalVar": [],
+  "color": true,
+  "noColor": false,
+  "disableUnicode": false,
+  "verbose": true
+}

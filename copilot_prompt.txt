@@ -1,0 +1,79 @@
+You are an expert full-stack developer. Generate a complete codebase for a ride-sharing / carpooling mobile app like sRide for India. Use **React Native + Expo** for mobile apps, **Node.js + Express** for backend, and **MongoDB** as the database. Follow best practices for scalability, maintainability, and modular architecture. Include TypeScript where appropriate.
+
+### Requirements:
+
+1. **Rider App (React Native)**
+   - Authentication: phone OTP (Firebase or custom), social logins optional.
+   - Profile management & payment methods.
+   - Search & request ride (pickup/drop with Google Maps integration).
+   - Live map tracking of driver & ETA.
+   - Real-time ride matching (pooling).
+   - Fare estimate & split fare.
+   - In-app masked chat & call with driver.
+   - Push notifications (FCM) & SMS (MSG91 / Twilio).
+   - Trip history & receipts.
+   - Rate & review driver.
+   - Scheduled & recurring rides.
+
+2. **Driver App (React Native)**
+   - Driver signup + KYC / vehicle document upload.
+   - Daily availability toggle.
+   - Accept/decline rides.
+   - Navigation to pickup/drop (Google Maps or Mapbox).
+   - Trip status updates: arrived, started, completed.
+   - Earnings dashboard & payouts.
+   - In-app chat & call (masked numbers).
+   - Trip history & ratings.
+
+3. **Backend (Node.js + Express)**
+   - RESTful API with JWT authentication.
+   - User service (Rider & Driver models, profile management).
+   - Ride service:
+     - Pooling algorithm: match riders with similar routes.
+     - Trip management & status updates.
+     - Fare calculation & split.
+   - Payment service: integrate Razorpay/UPI/cards.
+   - Notification service (push & SMS).
+   - Admin service: dashboard for live trips, driver/rider management, dispute handling, KYC verification.
+   - Real-time updates with Socket.IO for driver-rider location/status.
+   - Logging & monitoring endpoints.
+
+4. **Database (MongoDB)**
+   - Users collection (rider, driver, roles, KYC docs, ratings).
+   - Vehicles collection (for drivers).
+   - Rides collection (status, pool info, route, fare, riders, driver).
+   - Payments collection (transactions, split fare, settlements).
+   - Notifications collection (in-app, SMS, push).
+   - Admin & audit logs collection.
+
+5. **Routing & Maps**
+   - Google Maps SDK (React Native Maps) for live tracking.
+   - Directions API for routing & distance calculations.
+   - Dynamic multi-pickup routing for pooling (initially simple nearest matching).
+
+6. **Additional Features**
+   - SOS / emergency call.
+   - Driver incentives & gamification.
+   - Analytics dashboards (rides/day, revenue, cancellations).
+   - Admin approval workflow for KYC & vehicle verification.
+   - Multi-language support (English + Hindi).
+
+7. **DevOps & Best Practices**
+   - Use **TypeScript** for all code.
+   - Use **ESLint + Prettier**.
+   - Environment variables for keys & secrets.
+   - Dockerfile for containerization.
+   - CI/CD workflow (GitHub Actions).
+   - Basic testing: Jest (unit), Detox (E2E mobile).
+   - Use modular folder structure: `/src/models`, `/src/controllers`, `/src/routes`, `/src/services`, `/src/utils`.
+
+8. **Extras**
+   - Include README with setup instructions.
+   - Use GitHub Copilot comments to explain each module.
+   - Provide example `.env.example` for API keys.
+   - Seed database scripts for testing riders/drivers/vehicles.
+
+---
+
+**Instruction to Copilot:**  
+Generate all files and folder structure. Comment every function, class, and important logic. Prioritize MVP features first (authentication, ride request, driver tracking, basic pooling), then add advanced features like split fare, scheduled rides, and admin dashboard. Make sure code is ready to run with minimal configuration. Include error handling and basic validation.

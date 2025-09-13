@@ -1,0 +1,125 @@
+{
+  "users": [
+    {
+      "phoneNumber": "9999999999",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john.doe@example.com",
+      "isVerified": true,
+      "role": "rider"
+    },
+    {
+      "phoneNumber": "8888888888",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane.smith@example.com",
+      "isVerified": true,
+      "role": "rider"
+    },
+    {
+      "phoneNumber": "7777777777",
+      "firstName": "Mike",
+      "lastName": "Johnson",
+      "email": "mike.johnson@example.com",
+      "isVerified": true,
+      "role": "driver"
+    }
+  ],
+  "subscriptionPlans": [
+    {
+      "id": "PLAN_BASIC_MONTHLY",
+      "name": "Basic Monthly",
+      "description": "Basic subscription with 10% discount",
+      "price": 99,
+      "currency": "INR",
+      "duration": 30,
+      "discountPercentage": 10,
+      "features": ["10% discount on rides", "Priority booking", "24/7 support"],
+      "isActive": true
+    },
+    {
+      "id": "PLAN_PREMIUM_MONTHLY",
+      "name": "Premium Monthly",
+      "description": "Premium subscription with 20% discount",
+      "price": 199,
+      "currency": "INR",
+      "duration": 30,
+      "discountPercentage": 20,
+      "features": ["20% discount on rides", "Priority booking", "Dedicated support", "Free cancellations"],
+      "isActive": true
+    },
+    {
+      "id": "PLAN_BASIC_YEARLY",
+      "name": "Basic Yearly",
+      "description": "Basic subscription with 15% discount",
+      "price": 999,
+      "currency": "INR",
+      "duration": 365,
+      "discountPercentage": 15,
+      "features": ["15% discount on rides", "Priority booking", "24/7 support", "2 months free"],
+      "isActive": true
+    }
+  ],
+  "vehicles": [
+    {
+      "driverId": "driver_123",
+      "make": "Toyota",
+      "model": "Camry",
+      "year": 2020,
+      "licensePlate": "KA01AB1234",
+      "color": "White",
+      "type": "sedan",
+      "capacity": 4,
+      "isVerified": true
+    },
+    {
+      "driverId": "driver_456",
+      "make": "Honda",
+      "model": "City",
+      "year": 2019,
+      "licensePlate": "KA02CD5678",
+      "color": "Black",
+      "type": "sedan",
+      "capacity": 4,
+      "isVerified": true
+    }
+  ],
+  "paymentMethods": [
+    {
+      "userId": "user_123",
+      "type": "card",
+      "cardNumber": "4111111111111111",
+      "expiryMonth": "12",
+      "expiryYear": "2026",
+      "cvv": "123",
+      "cardholderName": "John Doe",
+      "isDefault": true
+    },
+    {
+      "userId": "user_123",
+      "type": "upi",
+      "upiId": "john.doe@upi",
+      "isDefault": false
+    }
+  ],
+  "addresses": [
+    {
+      "userId": "user_123",
+      "type": "home",
+      "name": "Home",
+      "address": "123 Main St, Bangalore, Karnataka 560001",
+      "latitude": 12.9716,
+      "longitude": 77.5946,
+      "isDefault": true
+    },
+    {
+      "userId": "user_123",
+      "type": "work",
+      "name": "Office",
+      "address": "456 Business Park, Bangalore, Karnataka 560002",
+      "latitude": 12.9816,
+      "longitude": 77.6046,
+      "isDefault": false
+    }
+  ]
+}
