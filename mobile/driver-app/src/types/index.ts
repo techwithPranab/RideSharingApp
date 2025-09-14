@@ -229,15 +229,15 @@ export interface PaginatedResponse<T = any> extends APIResponse {
 
 // Form types
 export interface DriverLoginForm {
-  phoneNumber: string;
+  email: string;
   otp: string;
 }
 
 export interface DriverRegisterForm {
-  phoneNumber: string;
+  email: string;
   firstName: string;
   lastName: string;
-  email?: string;
+  phoneNumber?: string;
   drivingLicenseNumber: string;
   vehicleDetails: {
     make: string;

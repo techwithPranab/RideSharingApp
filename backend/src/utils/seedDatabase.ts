@@ -8,9 +8,11 @@ import { User, UserRole, UserStatus, KYCStatus } from '../models/User';
 import { Vehicle, VehicleType, VehicleStatus } from '../models/Vehicle';
 import { Ride, RideStatus, PaymentStatus } from '../models/Ride';
 import { Payment, PaymentType, PaymentStatus as PayStatus, PaymentMethod } from '../models/Payment';
+import Driver from '../models/Driver';
 import { SubscriptionPlan, BillingCycle } from '../models/Subscription';
 import { AdminAnalytics, AnalyticsPeriod } from '../models/AdminAnalytics';
 import { AdminActivity, AdminAction, ActivitySeverity } from '../models/AdminActivity';
+import SystemConfig from '../models/SystemConfig';
 
 export const seedDatabase = async () => {
   try {
@@ -22,9 +24,11 @@ export const seedDatabase = async () => {
       Vehicle.deleteMany({}),
       Ride.deleteMany({}),
       Payment.deleteMany({}),
+      Driver.deleteMany({}),
       SubscriptionPlan.deleteMany({}),
       AdminAnalytics.deleteMany({}),
-      AdminActivity.deleteMany({})
+      AdminActivity.deleteMany({}),
+      SystemConfig.deleteMany({})
     ]);
 
     console.log('🧹 Cleared existing data');
@@ -41,27 +45,31 @@ export const seedDatabase = async () => {
     const riderUsers = await createRiderUsers();
     console.log(`✅ Created ${riderUsers.length} rider users`);
 
-    // 4. Create Vehicles for Drivers
+    // 4. Create Driver Applications for Approval System
+    const driverApplications = await createDriverApplications();
+    console.log(`✅ Created ${driverApplications.length} driver applications`);
+
+    // 5. Create Vehicles for Drivers
     const vehicles = await createVehicles(driverUsers);
     console.log(`✅ Created ${vehicles.length} vehicles`);
 
-    // 5. Create Subscription Plans
+    // 6. Create Subscription Plans
     const subscriptionPlans = await createSubscriptionPlans();
     console.log(`✅ Created ${subscriptionPlans.length} subscription plans`);
 
-    // 6. Create Rides
+    // 7. Create Rides
     const rides = await createRides(driverUsers, riderUsers, vehicles);
     console.log(`✅ Created ${rides.length} rides`);
 
-    // 7. Create Payments
+    // 8. Create Payments
     const payments = await createPayments(rides, driverUsers, riderUsers);
     console.log(`✅ Created ${payments.length} payments`);
 
-    // 8. Create Admin Analytics
+    // 9. Create Admin Analytics
     const analytics = await createAdminAnalytics();
     console.log(`✅ Created analytics data`);
 
-    // 9. Create Admin Activities
+    // 10. Create Admin Activities
     const activities = await createAdminActivities(adminUsers);
     console.log(`✅ Created ${activities.length} admin activities`);
 
@@ -70,6 +78,7 @@ export const seedDatabase = async () => {
     console.log(`   • ${adminUsers.length} Admin users`);
     console.log(`   • ${driverUsers.length} Driver users`);
     console.log(`   • ${riderUsers.length} Rider users`);
+    console.log(`   • ${driverApplications.length} Driver applications`);
     console.log(`   • ${vehicles.length} Vehicles`);
     console.log(`   • ${subscriptionPlans.length} Subscription plans`);
     console.log(`   • ${rides.length} Rides`);
@@ -467,6 +476,268 @@ const createRiderUsers = async () => {
   }
 
   return riders;
+};
+
+// Create Driver Applications for Approval System
+const createDriverApplications = async () => {
+  const driverApplicationData = [
+    {
+      firstName: 'Arjun',
+      lastName: 'Reddy',
+      email: 'arjun.reddy@gmail.com',
+      phone: '+919876543231',
+      address: '123 MG Road, Bangalore',
+      city: 'Bangalore',
+      state: 'Karnataka',
+      zipCode: '560001',
+      dateOfBirth: new Date('1990-05-15'),
+      licenseNumber: 'KA02AB9876543',
+      licenseExpiry: new Date('2026-05-15'),
+      vehicleInfo: {
+        make: 'Toyota',
+        model: 'Camry',
+        year: 2020,
+        color: 'Silver',
+        plateNumber: 'KA02AB9876',
+        registrationNumber: 'KA02AB9876543'
+      },
+      documents: {
+        license: 'https://example.com/licenses/arjun-license.jpg',
+        registration: 'https://example.com/registrations/arjun-reg.jpg',
+        insurance: 'https://example.com/insurance/arjun-ins.jpg',
+        profilePhoto: 'https://example.com/profiles/arjun.jpg',
+        vehiclePhoto: 'https://example.com/vehicles/arjun-car.jpg'
+      },
+      status: 'pending',
+      submissionDate: new Date(),
+      backgroundCheckStatus: 'pending',
+      isActive: false,
+      isOnline: false,
+      completedRides: 0,
+      earnings: {
+        total: 0,
+        thisMonth: 0,
+        thisWeek: 0
+      }
+    },
+    {
+      firstName: 'Priya',
+      lastName: 'Nair',
+      email: 'priya.nair@gmail.com',
+      phone: '+919876543232',
+      address: '456 Brigade Road, Bangalore',
+      city: 'Bangalore',
+      state: 'Karnataka',
+      zipCode: '560025',
+      dateOfBirth: new Date('1988-09-22'),
+      licenseNumber: 'KA03CD1234567',
+      licenseExpiry: new Date('2025-09-22'),
+      vehicleInfo: {
+        make: 'Honda',
+        model: 'City',
+        year: 2019,
+        color: 'White',
+        plateNumber: 'KA03CD1234',
+        registrationNumber: 'KA03CD1234567'
+      },
+      documents: {
+        license: 'https://example.com/licenses/priya-license.jpg',
+        registration: 'https://example.com/registrations/priya-reg.jpg',
+        insurance: 'https://example.com/insurance/priya-ins.jpg',
+        profilePhoto: 'https://example.com/profiles/priya.jpg',
+        vehiclePhoto: 'https://example.com/vehicles/priya-car.jpg'
+      },
+      status: 'approved',
+      submissionDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+      reviewDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+      backgroundCheckStatus: 'cleared',
+      isActive: true,
+      isOnline: false,
+      completedRides: 23,
+      rating: 4.8,
+      earnings: {
+        total: 12450,
+        thisMonth: 3200,
+        thisWeek: 850
+      }
+    },
+    {
+      firstName: 'Rajesh',
+      lastName: 'Gupta',
+      email: 'rajesh.gupta@gmail.com',
+      phone: '+919876543233',
+      address: '789 Commercial Street, Bangalore',
+      city: 'Bangalore',
+      state: 'Karnataka',
+      zipCode: '560001',
+      dateOfBirth: new Date('1985-12-10'),
+      licenseNumber: 'KA04EF7891234',
+      licenseExpiry: new Date('2024-12-31'), // Expired license
+      vehicleInfo: {
+        make: 'Maruti',
+        model: 'Swift',
+        year: 2017,
+        color: 'Red',
+        plateNumber: 'KA04EF7891',
+        registrationNumber: 'KA04EF7891234'
+      },
+      documents: {
+        license: 'https://example.com/licenses/rajesh-license.jpg',
+        registration: 'https://example.com/registrations/rajesh-reg.jpg',
+        insurance: 'https://example.com/insurance/rajesh-ins.jpg',
+        profilePhoto: 'https://example.com/profiles/rajesh.jpg',
+        vehiclePhoto: 'https://example.com/vehicles/rajesh-car.jpg'
+      },
+      status: 'rejected',
+      submissionDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
+      reviewDate: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000), // 8 days ago
+      notes: 'License expired. Please renew and resubmit.',
+      backgroundCheckStatus: 'pending',
+      isActive: false,
+      isOnline: false,
+      completedRides: 0,
+      earnings: {
+        total: 0,
+        thisMonth: 0,
+        thisWeek: 0
+      }
+    },
+    {
+      firstName: 'Meera',
+      lastName: 'Patel',
+      email: 'meera.patel@gmail.com',
+      phone: '+919876543234',
+      address: '321 Indiranagar, Bangalore',
+      city: 'Bangalore',
+      state: 'Karnataka',
+      zipCode: '560038',
+      dateOfBirth: new Date('1992-03-25'),
+      licenseNumber: 'KA05GH4567890',
+      licenseExpiry: new Date('2027-03-25'),
+      vehicleInfo: {
+        make: 'Hyundai',
+        model: 'Verna',
+        year: 2021,
+        color: 'Blue',
+        plateNumber: 'KA05GH4567',
+        registrationNumber: 'KA05GH4567890'
+      },
+      documents: {
+        license: 'https://example.com/licenses/meera-license.jpg',
+        registration: 'https://example.com/registrations/meera-reg.jpg',
+        insurance: 'https://example.com/insurance/meera-ins.jpg',
+        profilePhoto: 'https://example.com/profiles/meera.jpg',
+        vehiclePhoto: 'https://example.com/vehicles/meera-car.jpg'
+      },
+      status: 'pending',
+      submissionDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+      backgroundCheckStatus: 'cleared',
+      isActive: false,
+      isOnline: false,
+      completedRides: 0,
+      earnings: {
+        total: 0,
+        thisMonth: 0,
+        thisWeek: 0
+      }
+    },
+    {
+      firstName: 'Vikram',
+      lastName: 'Singh',
+      email: 'vikram.singh@gmail.com',
+      phone: '+919876543235',
+      address: '654 Whitefield, Bangalore',
+      city: 'Bangalore',
+      state: 'Karnataka',
+      zipCode: '560066',
+      dateOfBirth: new Date('1987-11-08'),
+      licenseNumber: 'KA06IJ1357924',
+      licenseExpiry: new Date('2025-11-08'),
+      vehicleInfo: {
+        make: 'Tata',
+        model: 'Nexon',
+        year: 2020,
+        color: 'Black',
+        plateNumber: 'KA06IJ1357',
+        registrationNumber: 'KA06IJ1357924'
+      },
+      documents: {
+        license: 'https://example.com/licenses/vikram-license.jpg',
+        registration: 'https://example.com/registrations/vikram-reg.jpg',
+        insurance: 'https://example.com/insurance/vikram-ins.jpg',
+        profilePhoto: 'https://example.com/profiles/vikram.jpg',
+        vehiclePhoto: 'https://example.com/vehicles/vikram-car.jpg'
+      },
+      status: 'suspended',
+      submissionDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+      reviewDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000), // 20 days ago
+      notes: 'Suspended due to customer complaints regarding reckless driving.',
+      backgroundCheckStatus: 'cleared',
+      isActive: false,
+      isOnline: false,
+      completedRides: 45,
+      rating: 2.8,
+      earnings: {
+        total: 8950,
+        thisMonth: 0,
+        thisWeek: 0
+      }
+    },
+    {
+      firstName: 'Anita',
+      lastName: 'Sharma',
+      email: 'anita.sharma@gmail.com',
+      phone: '+919876543236',
+      address: '987 JP Nagar, Bangalore',
+      city: 'Bangalore',
+      state: 'Karnataka',
+      zipCode: '560078',
+      dateOfBirth: new Date('1994-07-18'),
+      licenseNumber: 'KA07KL2468135',
+      licenseExpiry: new Date('2028-07-18'),
+      vehicleInfo: {
+        make: 'Mahindra',
+        model: 'XUV300',
+        year: 2022,
+        color: 'White',
+        plateNumber: 'KA07KL2468',
+        registrationNumber: 'KA07KL2468135'
+      },
+      documents: {
+        license: 'https://example.com/licenses/anita-license.jpg',
+        registration: 'https://example.com/registrations/anita-reg.jpg',
+        insurance: 'https://example.com/insurance/anita-ins.jpg',
+        profilePhoto: 'https://example.com/profiles/anita.jpg',
+        vehiclePhoto: 'https://example.com/vehicles/anita-car.jpg'
+      },
+      status: 'approved',
+      submissionDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
+      reviewDate: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000), // 12 days ago
+      backgroundCheckStatus: 'cleared',
+      isActive: true,
+      isOnline: true,
+      currentLocation: {
+        type: 'Point',
+        coordinates: [77.5946, 12.9716] // Bangalore coordinates
+      },
+      completedRides: 67,
+      rating: 4.6,
+      earnings: {
+        total: 18750,
+        thisMonth: 4200,
+        thisWeek: 1150
+      }
+    }
+  ];
+
+  const driverApplications = [];
+  for (const driverApp of driverApplicationData) {
+    const driver = new Driver(driverApp);
+    await driver.save();
+    driverApplications.push(driver);
+  }
+
+  return driverApplications;
 };
 
 // Create Vehicles

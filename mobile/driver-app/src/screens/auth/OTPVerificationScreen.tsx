@@ -36,7 +36,7 @@ const OTPVerificationScreen: React.FC = () => {
   const route = useRoute<OTPVerificationScreenRouteProp>();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
 
-  const { phoneNumber, isLogin } = route.params;
+  const { email, isLogin } = route.params;
 
   // Countdown timer for resend OTP
   useEffect(() => {
@@ -54,9 +54,16 @@ const OTPVerificationScreen: React.FC = () => {
     }
 
     try {
-      await dispatch(verifyOTP({ phoneNumber, otp })).unwrap();
+      console.log('Verifying OTP:', { email, otp, isLogin });
+      const result = await dispatch(verifyOTP({ email, otp })).unwrap();
+      console.log('OTP verification result:', result);
+      
+      // Show success message
+      Alert.alert('Success', 'OTP verified successfully!');
+      
       // Navigation will be handled by the navigator based on auth state
     } catch (error) {
+      console.log('OTP verification error:', error);
       Alert.alert('Verification Failed', error as string);
     }
   };
@@ -72,7 +79,7 @@ const OTPVerificationScreen: React.FC = () => {
       // Resend OTP
       // Note: You might want to dispatch sendOTP again here
       Alert.alert('Success', 'OTP sent successfully');
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to resend OTP');
     }
   };
@@ -84,9 +91,9 @@ const OTPVerificationScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Verify Phone Number</Text>
+        <Text style={styles.title}>Verify Email Address</Text>
         <Text style={styles.subtitle}>
-          We've sent a 6-digit code to{'\n'}+91 {phoneNumber}
+          We've sent a 6-digit code to{'\n'}{email}
         </Text>
       </View>
 
@@ -129,7 +136,7 @@ const OTPVerificationScreen: React.FC = () => {
         </View>
 
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backText}>Change Phone Number</Text>
+          <Text style={styles.backText}>Change Email Address</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -171,7 +178,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     backgroundColor: '#f9f9f9',
     textAlign: 'center',
-    letterSpacing: 8,
+    letterSpacing: 4,
   },
   button: {
     backgroundColor: '#007AFF',

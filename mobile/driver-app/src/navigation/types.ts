@@ -8,7 +8,7 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
-  OTPVerification: { phoneNumber: string; isLogin: boolean };
+  OTPVerification: { email: string; isLogin: boolean };
   ForgotPassword: undefined;
   ResetPassword: { token: string };
 };
@@ -17,6 +17,7 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   Dashboard: undefined;
   Rides: undefined;
+  OfferRide: undefined;
   Earnings: undefined;
   Profile: undefined;
 };
@@ -34,6 +35,41 @@ export type RidesStackParamList = {
   RideDetails: { rideId: string };
   RideHistory: undefined;
   ActiveRide: { rideId: string };
+};
+
+// Offer Ride stack params
+export type OfferRideStackParamList = {
+  OfferRideHome: undefined;
+  CreateRideOffer: undefined;
+  SelectLocation: { locationType: 'source' | 'destination' | 'stop'; currentLocation?: any };
+  AddStops: { source: any; destination: any };
+  SetSchedule: { 
+    source: any; 
+    destination: any; 
+    stops?: any[];
+  };
+  SetPricing: { 
+    source: any; 
+    destination: any; 
+    stops?: any[];
+    schedule: {
+      departureDate: string; // ISO string
+      departureTime: string; // ISO string
+      isFlexible: boolean;
+      flexibilityMinutes: number;
+      recurring: {
+        isRecurring: boolean;
+        days: string[];
+        endDate?: string; // ISO string if present
+      };
+    };
+    seats: number;
+  };
+  ReviewOffer: { 
+    rideOffer: any;
+  };
+  MyOffers: undefined;
+  OfferDetails: { offerId: string };
 };
 
 // Earnings stack params

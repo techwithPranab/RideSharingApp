@@ -10,6 +10,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 // Import stack navigators
 import DashboardNavigator from './DashboardNavigator';
 import RidesNavigator from './RidesNavigator';
+import OfferRideNavigator from './OfferRideNavigator';
 import EarningsNavigator from './EarningsNavigator';
 import ProfileNavigator from './ProfileNavigator';
 
@@ -36,6 +37,8 @@ const MainNavigator: React.FC = () => {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Rides') {
             iconName = focused ? 'car' : 'car-outline';
+          } else if (route.name === 'OfferRide') {
+            iconName = focused ? 'add-circle' : 'add-circle-outline';
           } else if (route.name === 'Earnings') {
             iconName = focused ? 'wallet' : 'wallet-outline';
           } else if (route.name === 'Profile') {
@@ -58,6 +61,11 @@ const MainNavigator: React.FC = () => {
         name="Rides"
         component={RidesNavigator}
         options={{ title: 'Rides' }}
+      />
+      <Tab.Screen
+        name="OfferRide"
+        component={OfferRideNavigator}
+        options={{ title: 'Offer Ride' }}
       />
       <Tab.Screen
         name="Earnings"

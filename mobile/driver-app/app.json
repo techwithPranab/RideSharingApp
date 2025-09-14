@@ -53,10 +53,10 @@
         }
       ],
       [
-        "expo-notifications",
+        "react-native-maps",
         {
-          "icon": "./assets/notification-icon.png",
-          "color": "#ffffff"
+          "iosApiKey": "YOUR_GOOGLE_MAPS_IOS_API_KEY",
+          "androidApiKey": "YOUR_GOOGLE_MAPS_ANDROID_API_KEY"
         }
       ]
     ],

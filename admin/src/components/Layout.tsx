@@ -12,7 +12,8 @@ import {
   Menu,
   X,
   Bell,
-  Crown
+  Crown,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -26,6 +27,7 @@ const Layout: React.FC = () => {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Users', href: '/users', icon: Users },
     { name: 'Drivers', href: '/drivers', icon: Car },
+    { name: 'Driver Approval', href: '/driver-approval', icon: UserCheck },
     { name: 'Rides', href: '/rides', icon: MapPin },
     { name: 'Payments', href: '/payments', icon: CreditCard },
     { name: 'Subscriptions', href: '/subscriptions', icon: Crown },

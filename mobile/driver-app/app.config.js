@@ -1,0 +1,57 @@
+export default {
+  expo: {
+    name: "RideShare Driver",
+    slug: "rideshare-driver",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/icon.png",
+    userInterfaceStyle: "light",
+    splash: {
+      image: "./assets/splash.png",
+      resizeMode: "contain",
+      backgroundColor: "#ffffff"
+    },
+    assetBundlePatterns: [
+      "**/*"
+    ],
+    ios: {
+      supportsTablet: false,
+      bundleIdentifier: "com.rideshare.driver",
+      buildNumber: "1.0.0",
+      infoPlist: {
+        NSLocationWhenInUseUsageDescription: "This app needs access to location to provide driver services and navigation.",
+        NSLocationAlwaysUsageDescription: "This app needs access to location to track rides and provide accurate pickup/drop navigation.",
+        NSCameraUsageDescription: "This app needs camera access for document verification and profile photos.",
+        NSPhotoLibraryUsageDescription: "This app needs photo library access to upload documents and profile photos."
+      }
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: "./assets/adaptive-icon.png",
+        backgroundColor: "#FFFFFF"
+      },
+      package: "com.rideshare.driver",
+      versionCode: 1,
+      permissions: [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "FOREGROUND_SERVICE"
+      ]
+    },
+    web: {
+      favicon: "./assets/favicon.png"
+    },
+    plugins: [
+      [
+        "expo-location",
+        {
+          locationAlwaysAndWhenInUsePermission: "Allow RideShare Driver to use your location for ride tracking and navigation."
+        }
+      ]
+    ]
+  }
+};

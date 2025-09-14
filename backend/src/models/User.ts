@@ -5,8 +5,6 @@
 
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
-
-// User role enum
 export enum UserRole {
   RIDER = 'rider',
   DRIVER = 'driver',
@@ -188,11 +186,13 @@ const UserSchema = new Schema<IUser>({
   // Basic information
   phoneNumber: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
+    sparse: true,
     index: true,
     validate: {
       validator: function(v: string) {
+        if (!v) return true; // Allow empty phone numbers
         return /^\+91[6-9]\d{9}$/.test(v); // Indian phone number format
       },
       message: 'Please provide a valid Indian phone number'

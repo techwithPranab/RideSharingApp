@@ -55,8 +55,8 @@ export const getDashboardStats = asyncHandler(async (req: Request, res: Response
 
     // Recent rides (last 7 days)
     Ride.find({ createdAt: { $gte: lastWeek } })
-      .populate('riderId', 'firstName lastName')
       .populate('driverId', 'firstName lastName')
+      .populate('vehicleId', 'make model licensePlate')
       .sort({ createdAt: -1 })
       .limit(10),
 

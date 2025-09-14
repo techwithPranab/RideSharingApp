@@ -185,7 +185,9 @@ const userSlice = createSlice({
       })
       .addCase(addAddress.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.addresses.push(action.payload);
+        if (action.payload) {
+          state.addresses.push(action.payload);
+        }
         state.error = null;
       })
       .addCase(addAddress.rejected, (state, action) => {

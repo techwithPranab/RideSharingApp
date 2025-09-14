@@ -3,12 +3,16 @@
  */
 
 // API Configuration
-export const API_BASE_URL = __DEV__
-  ? 'http://localhost:3000/api'
-  : 'https://your-production-api.com/api';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || (__DEV__
+  ? 'http://localhost:5000/api'
+  : 'https://your-production-api.com/api');
+
+export const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || (__DEV__
+  ? 'http://localhost:5000'
+  : 'https://your-production-api.com');
 
 // Google Maps API Key (should be in environment variables)
-export const GOOGLE_MAPS_API_KEY = 'your-google-maps-api-key';
+export const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'your-google-maps-api-key';
 
 // App Configuration
 export const APP_CONFIG = {
@@ -21,6 +25,20 @@ export const APP_CONFIG = {
   // Location Configuration
   LOCATION_UPDATE_INTERVAL: 10000, // 10 seconds
   LOCATION_ACCURACY: 100, // meters
+
+  // Google Maps Configuration
+  GOOGLE_MAPS_CONFIG: {
+    INITIAL_REGION: {
+      latitude: 28.6139, // Delhi coordinates as default
+      longitude: 77.2090,
+      latitudeDelta: 0.0922,
+      longitudeDelta: 0.0421,
+    },
+    DEFAULT_ZOOM: 15,
+    MAX_ZOOM: 20,
+    MIN_ZOOM: 10,
+    SEARCH_RADIUS: 5000, // meters for place search
+  },
 
   // UI Configuration
   MAP_PADDING: {

@@ -26,21 +26,51 @@ class EmailService {
    */
   async initialize() {
     try {
+      // Debug: Log all email-related environment variables
+      console.log('=== Email Environment Variables ===');
+      console.log('EMAIL_HOST:', process.env.EMAIL_HOST);
+      console.log('EMAIL_PORT:', process.env.EMAIL_PORT);
+      console.log('EMAIL_USER:', process.env.EMAIL_USER);
+      console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? '***SET***' : 'NOT SET');
+      console.log('EMAIL_FROM:', process.env.EMAIL_FROM);
+      console.log('=====================================');
+
+      // Check if required environment variables are set
+      if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        throw new Error('EMAIL_USER and EMAIL_PASS environment variables are required');
+      }
+
+      if (!process.env.EMAIL_HOST) {
+        throw new Error('EMAIL_HOST environment variable is required');
+      }
+
       const emailConfig = {
-        service: process.env.EMAIL_SERVICE || 'gmail',
+        host: process.env.EMAIL_HOST || 'smtp-relay.brevo.com',
+        port: parseInt(process.env.EMAIL_PORT || '587'),
+        secure: false, // false for STARTTLS (port 587)
+        requireTLS: true, // Force TLS upgrade
         auth: {
           user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_APP_PASSWORD
-        }
+          pass: process.env.EMAIL_PASS
+        },
+        tls: {
+          ciphers: 'SSLv3',
+          rejectUnauthorized: false
+        },
+        debug: process.env.NODE_ENV === 'development',
+        logger: process.env.NODE_ENV === 'development'
       };
 
       this.transporter = nodemailer.createTransport(emailConfig);
-      this.isInitialized = true;
 
-      logger.info('Email service initialized successfully');
+      // Verify connection
+      await this.transporter.verify();
+
+      this.isInitialized = true;
+      logger.info('Email service initialized successfully with Brevo');
     } catch (error) {
       logger.error('Failed to initialize email service:', error);
-      throw error;
+      throw new Error(`Email service initialization failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -54,7 +84,7 @@ class EmailService {
 
     try {
       const mailOptions = {
-        from: options.from || `"${process.env.APP_NAME || 'RideShare Pro'}" <${process.env.EMAIL_USER}>`,
+        from: options.from || process.env.EMAIL_FROM || `"${process.env.APP_NAME || 'RideShare Pro'}" <${process.env.EMAIL_USER}>`,
         to: options.to,
         subject: options.subject,
         html: options.html,
@@ -70,6 +100,25 @@ class EmailService {
       logger.error('Failed to send email:', error);
       throw error;
     }
+  }
+
+  /**
+   * Send OTP email
+   */
+  async sendOTPEmail(email: string, userName: string, otp: string): Promise<void> {
+    const template = this.getOTPEmailTemplate(userName, otp);
+
+    const emailOptions: EmailOptions = {
+      to: email,
+      subject: template.subject,
+      html: template.html
+    };
+
+    if (template.text) {
+      emailOptions.text = template.text;
+    }
+
+    await this.sendEmail(emailOptions);
   }
 
   /**
@@ -246,6 +295,39 @@ class EmailService {
   }
 
   // Email Templates
+  private getOTPEmailTemplate(userName: string, otp: string): EmailTemplate {
+    return {
+      subject: `Your ${process.env.APP_NAME || 'RideShare Pro'} OTP Code`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #333; text-align: center;">Your OTP Code</h1>
+          <p>Hi ${userName},</p>
+          <p>Your One-Time Password (OTP) for verification is:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <span style="background-color: #f8f9fa; color: #333; padding: 15px 25px; font-size: 24px; font-weight: bold; border-radius: 5px; border: 2px solid #007bff; letter-spacing: 3px; display: inline-block;">${otp}</span>
+          </div>
+          <p style="color: #666; text-align: center;"><strong>This OTP will expire in 5 minutes.</strong></p>
+          <p>If you didn't request this OTP, please ignore this email.</p>
+          <p>For security reasons, please do not share this OTP with anyone.</p>
+          <p>The ${process.env.APP_NAME || 'RideShare Pro'} Team</p>
+        </div>
+      `,
+      text: `Your OTP Code
+
+Hi ${userName},
+
+Your One-Time Password (OTP) for verification is: ${otp}
+
+This OTP will expire in 5 minutes.
+
+If you didn't request this OTP, please ignore this email.
+
+For security reasons, please do not share this OTP with anyone.
+
+The ${process.env.APP_NAME || 'RideShare Pro'} Team`
+    };
+  }
+
   private getWelcomeEmailTemplate(userName: string): EmailTemplate {
     return {
       subject: `Welcome to ${process.env.APP_NAME || 'RideShare Pro'}!`,

@@ -10,25 +10,24 @@ const jwt = require('jsonwebtoken');
 
 import { User, UserRole, UserStatus } from '../models/User';
 import { AppError } from '../middleware/errorHandler';
-import { sendOTP } from '../services/smsService';
 import { emailService } from '../services/emailService';
 import { logger } from '../utils/logger';
 
 // Interface for request bodies
 interface RegisterRequest extends Request {
   body: {
-    phoneNumber: string;
+    email: string;
     firstName: string;
     lastName: string;
     role: UserRole;
-    email?: string;
+    phoneNumber?: string;
     referralCode?: string;
   };
 }
 
 interface LoginRequest extends Request {
   body: {
-    phoneNumber: string;
+    email: string;
     password?: string;
     otp?: string;
   };
@@ -44,7 +43,7 @@ interface AdminLoginRequest extends Request {
 
 interface VerifyOTPRequest extends Request {
   body: {
-    phoneNumber: string;
+    email: string;
     otp: string;
   };
 }
@@ -65,33 +64,33 @@ const signToken = (userId: string, role: UserRole): string => {
 };
 
 /**
- * Generate and send OTP
+ * Generate and send OTP via email
  */
-const generateAndSendOTP = async (phoneNumber: string): Promise<void> => {
-  // Generate 4-digit OTP
-  const otp = Math.floor(1000 + Math.random() * 9000).toString();
+const generateAndSendOTP = async (email: string, firstName: string): Promise<void> => {
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
   
   // Store OTP with 5-minute expiry
   const expiresAt = new Date();
   expiresAt.setMinutes(expiresAt.getMinutes() + 5);
   
-  otpStore.set(phoneNumber, {
+  otpStore.set(email, {
     otp,
     expiresAt,
     attempts: 0
   });
   
-  // Send OTP via SMS
-  await sendOTP(phoneNumber, otp);
+  // Send OTP via email
+  await emailService.sendOTPEmail(email, firstName, otp);
   
-  logger.info(`OTP sent to ${phoneNumber}: ${otp}`); // Remove in production
+  logger.info(`OTP sent to ${email}: ${otp}`); // Remove in production
 };
 
 /**
  * Verify OTP
  */
-const verifyOTP = (phoneNumber: string, inputOTP: string): boolean => {
-  const stored = otpStore.get(phoneNumber);
+const verifyOTP = (email: string, inputOTP: string): boolean => {
+  const stored = otpStore.get(email);
   
   if (!stored) {
     return false;
@@ -99,13 +98,13 @@ const verifyOTP = (phoneNumber: string, inputOTP: string): boolean => {
   
   // Check expiry
   if (new Date() > stored.expiresAt) {
-    otpStore.delete(phoneNumber);
+    otpStore.delete(email);
     return false;
   }
   
   // Check attempts limit
   if (stored.attempts >= 3) {
-    otpStore.delete(phoneNumber);
+    otpStore.delete(email);
     return false;
   }
   
@@ -116,7 +115,7 @@ const verifyOTP = (phoneNumber: string, inputOTP: string): boolean => {
   }
   
   // OTP verified, remove from store
-  otpStore.delete(phoneNumber);
+  otpStore.delete(email);
   return true;
 };
 
@@ -133,10 +132,15 @@ export const register = async (req: RegisterRequest, res: Response, next: NextFu
     
     const { phoneNumber, firstName, lastName, role, email, referralCode } = req.body;
     
-    // Check if user already exists
-    const existingUser = await User.findOne({ phoneNumber });
+    // Validate required fields
+    if (!email) {
+      return next(new AppError('Email is required', 400));
+    }
+    
+    // Check if user already exists by email
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-      return next(new AppError('User with this phone number already exists', 400));
+      return next(new AppError('User with this email already exists', 400));
     }
     
     // Check referral code if provided
@@ -153,19 +157,20 @@ export const register = async (req: RegisterRequest, res: Response, next: NextFu
     
     // Create user
     const user = await User.create({
-      phoneNumber,
+      phoneNumber: phoneNumber || undefined,
       firstName,
       lastName,
       role,
-      email,
+      email: email.toLowerCase(),
       referralCode: newReferralCode,
       referredBy: referredBy?._id,
       status: UserStatus.PENDING_VERIFICATION,
-      isPhoneVerified: false
+      isPhoneVerified: false,
+      isEmailVerified: false
     });
     
     // Generate and send OTP
-    await generateAndSendOTP(phoneNumber);
+    await generateAndSendOTP(email, `${firstName} ${lastName}`);
     
     // Send welcome email if email is provided
     if (email) {
@@ -182,10 +187,10 @@ export const register = async (req: RegisterRequest, res: Response, next: NextFu
     
     res.status(201).json({
       success: true,
-      message: 'User registered successfully. Please verify your phone number.',
+      message: 'User registered successfully. Please verify your email.',
       data: {
         userId: user._id,
-        phoneNumber: user.phoneNumber,
+        email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
@@ -208,10 +213,10 @@ export const login = async (req: LoginRequest, res: Response, next: NextFunction
       return next(new AppError('Validation failed', 400));
     }
     
-    const { phoneNumber, password, otp } = req.body;
+    const { email, password, otp } = req.body;
     
     // Find user
-    const user = await User.findOne({ phoneNumber }).select('+password');
+    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
     if (!user) {
       return next(new AppError('User not found', 404));
     }
@@ -230,7 +235,7 @@ export const login = async (req: LoginRequest, res: Response, next: NextFunction
     
     // Authentication with OTP (if provided)
     if (otp) {
-      isAuthenticated = verifyOTP(phoneNumber, otp);
+      isAuthenticated = verifyOTP(email, otp);
     }
     
     if (!isAuthenticated) {
@@ -239,14 +244,14 @@ export const login = async (req: LoginRequest, res: Response, next: NextFunction
     
     // Update user status and last active
     user.status = UserStatus.ACTIVE;
-    user.isPhoneVerified = true;
+    user.isEmailVerified = true;
     user.lastActiveAt = new Date();
     await user.save();
     
     // Generate JWT token
     const token = signToken(user._id.toString(), user.role);
     
-    logger.info(`User logged in: ${user.phoneNumber}`);
+    logger.info(`User logged in: ${user.email}`);
     
     res.status(200).json({
       success: true,
@@ -353,81 +358,91 @@ export const adminLogin = async (req: AdminLoginRequest, res: Response, next: Ne
  */
 export const sendLoginOTP = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { phoneNumber } = req.body;
-
-    if (!phoneNumber) {
-      return next(new AppError('Phone number is required', 400));
+    console.log('Inside sendLoginOTP');
+    console.log('Request body:', req.body);
+    
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
+      return next(new AppError(`Validation failed: ${errors.array()[0].msg}`, 400));
+    }
+    
+    const { email } = req.body;
+    console.log('Request to send OTP to:', email);
+    if (!email) {
+      return next(new AppError('Email is required', 400));
     }
 
     // Check if user exists
-    const user = await User.findOne({ phoneNumber });
+    const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
       return next(new AppError('User not found', 404));
     }
 
     // Generate and send OTP
-    await generateAndSendOTP(phoneNumber);
+    await generateAndSendOTP(email, `${user.firstName} ${user.lastName}`);
 
     res.status(200).json({
       success: true,
       message: 'OTP sent successfully'
     });
   } catch (error) {
+    console.log('Send OTP error:', error);
     logger.error('Send OTP error:', error);
     return next(new AppError('Failed to send OTP', 500));
   }
 };
 
 /**
- * Verify phone number with OTP
+ * Verify email with OTP
  */
-export const verifyPhoneNumber = async (req: VerifyOTPRequest, res: Response, next: NextFunction): Promise<void> => {
+export const verifyEmailOTP = async (req: VerifyOTPRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { phoneNumber, otp } = req.body;
+    const { email, otp } = req.body;
     
-    if (!phoneNumber || !otp) {
-      return next(new AppError('Phone number and OTP are required', 400));
+    if (!email || !otp) {
+      return next(new AppError('Email and OTP are required', 400));
     }
     
     // Verify OTP
-    const isValid = verifyOTP(phoneNumber, otp);
+    const isValid = verifyOTP(email, otp);
     if (!isValid) {
       return next(new AppError('Invalid or expired OTP', 400));
     }
     
     // Update user verification status
-    const user = await User.findOne({ phoneNumber });
+    const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
       return next(new AppError('User not found', 404));
     }
     
-    user.isPhoneVerified = true;
+    user.isEmailVerified = true;
     user.status = UserStatus.ACTIVE;
     await user.save();
     
     // Generate JWT token
     const token = signToken(user._id.toString(), user.role);
     
-    logger.info(`Phone verified for user: ${user.phoneNumber}`);
+    logger.info(`Email verified for user: ${user.email}`);
     
     res.status(200).json({
       success: true,
-      message: 'Phone number verified successfully',
+      message: 'Email verified successfully',
       data: {
         user: {
           id: user._id,
-          phoneNumber: user.phoneNumber,
+          email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
-          isPhoneVerified: user.isPhoneVerified
+          isEmailVerified: user.isEmailVerified
         },
         token
       }
     });
   } catch (error) {
-    logger.error('Phone verification error:', error);
-    return next(new AppError('Phone verification failed', 500));
+    logger.error('Email verification error:', error);
+    return next(new AppError('Email verification failed', 500));
   }
 };
 

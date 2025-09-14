@@ -1502,30 +1502,95 @@ async function getRecentActivity() {
   const recentRides = await Ride.find()
     .sort({ createdAt: -1 })
     .limit(5)
-    .populate('driverId', 'firstName lastName')
-    .populate('passengers.userId', 'firstName lastName')
+    .populate({
+      path: 'driverId',
+      select: 'firstName lastName',
+      options: { lean: true }
+    })
+    .populate({
+      path: 'passengers.userId',
+      select: 'firstName lastName',
+      options: { lean: true }
+    })
     .select('rideId status totalFare createdAt');
+
+  // Transform recent rides to handle null populated fields
+  const transformedRecentRides = recentRides.map(ride => ({
+    ...ride.toObject(),
+    driverId: ride.driverId || {
+      firstName: 'Unknown',
+      lastName: 'Driver'
+    },
+    passengers: ride.passengers.map(passenger => ({
+      ...passenger,
+      userId: passenger.userId || {
+        firstName: 'Unknown',
+        lastName: 'Passenger'
+      }
+    }))
+  }));
 
   // Get recent payments
   const recentPayments = await Payment.find()
     .sort({ initiatedAt: -1 })
     .limit(5)
-    .populate('payerId', 'firstName lastName')
-    .populate('payeeId', 'firstName lastName')
+    .populate({
+      path: 'payerId',
+      select: 'firstName lastName',
+      options: { lean: true }
+    })
+    .populate({
+      path: 'payeeId',
+      select: 'firstName lastName',
+      options: { lean: true }
+    })
     .select('amount status type initiatedAt');
+
+  // Transform recent payments to handle null populated fields
+  const transformedRecentPayments = recentPayments.map(payment => ({
+    ...payment.toObject(),
+    payerId: payment.payerId || {
+      firstName: 'Unknown',
+      lastName: 'Payer'
+    },
+    payeeId: payment.payeeId || {
+      firstName: 'Unknown',
+      lastName: 'Payee'
+    }
+  }));
 
   // Get recent subscriptions
   const recentSubscriptions = await Subscription.find()
     .sort({ createdAt: -1 })
     .limit(5)
-    .populate('userId', 'firstName lastName')
-    .populate('planId', 'name')
+    .populate({
+      path: 'userId',
+      select: 'firstName lastName',
+      options: { lean: true }
+    })
+    .populate({
+      path: 'planId',
+      select: 'name',
+      options: { lean: true }
+    })
     .select('status totalPaid createdAt');
 
+  // Transform recent subscriptions to handle null populated fields
+  const transformedRecentSubscriptions = recentSubscriptions.map(subscription => ({
+    ...subscription.toObject(),
+    userId: subscription.userId || {
+      firstName: 'Unknown',
+      lastName: 'User'
+    },
+    planId: subscription.planId || {
+      name: 'Unknown Plan'
+    }
+  }));
+
   return {
-    recentRides,
-    recentPayments,
-    recentSubscriptions
+    recentRides: transformedRecentRides,
+    recentPayments: transformedRecentPayments,
+    recentSubscriptions: transformedRecentSubscriptions
   };
 }
 

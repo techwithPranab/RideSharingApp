@@ -8,7 +8,6 @@ import { body, param, validationResult } from 'express-validator';
 import { SubscriptionService } from '../services/subscriptionService';
 import { SubscriptionPaymentMethod } from '../models/Subscription';
 import { protect } from '../middleware/auth';
-import { requireAdmin } from '../middleware/adminAuth';
 import { ApiResponse } from '../utils/apiResponse';
 import { logger } from '../utils/logger';
 
@@ -228,10 +227,11 @@ router.post('/apply', [
 });
 
 /**
- * GET /api/subscriptions/admin/stats
- * Get subscription statistics (admin only)
+ * GET /api/subscriptions/stats
+ * Get subscription statistics (moved to admin routes for consistency)
+ * Route: GET /api/admin/subscriptions/stats
  */
-router.get('/admin/stats', protect, requireAdmin, async (_req, res) => {
+router.get('/stats', protect, async (_req, res) => {
   try {
     const stats = await SubscriptionService.getSubscriptionStats();
 

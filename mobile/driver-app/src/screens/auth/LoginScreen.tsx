@@ -2,7 +2,7 @@
  * Login Screen Component
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 
 // Import actions
-import { sendOTP } from '../../store/slices/authSlice';
+import { sendOTP, clearError } from '../../store/slices/authSlice';
 
 // Import types
 import { AuthStackParamList } from '../../navigation/types';
@@ -27,24 +27,41 @@ import { useAppDispatch } from '../../hooks/redux';
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 
 const LoginScreen: React.FC = () => {
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
 
   const dispatch = useAppDispatch();
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
 
+  // Clear any existing errors when component mounts
+  useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch]);
+
   const handleSendOTP = async () => {
-    if (!phoneNumber || phoneNumber.length < 10) {
-      Alert.alert('Error', 'Please enter a valid phone number');
+    if (!email || !email.includes('@')) {
+      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
     try {
-      await dispatch(sendOTP(phoneNumber)).unwrap();
+      console.log('=== Starting OTP Send Process ===');
+      console.log('Email:', email);
+      console.log('Navigation object:', navigation);
+      
+      const result = await dispatch(sendOTP(email)).unwrap();
+      console.log('OTP sent successfully:', result);
+      
+      console.log('Attempting to navigate to OTPVerification...');
+      console.log('Navigation params:', { email, isLogin: true });
+      
       // Navigate to OTP verification screen
-      navigation.navigate('OTPVerification', { phoneNumber, isLogin: true });
+      navigation.navigate('OTPVerification', { email, isLogin: true });
+      
+      console.log('Navigation call completed');
     } catch (error) {
-      Alert.alert('Error', error as string);
+      console.log('OTP send error:', error);
+      Alert.alert('Error 1', error as string);
     }
   };
 
@@ -66,12 +83,12 @@ const LoginScreen: React.FC = () => {
       <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="Phone Number (10 digits)"
-          value={phoneNumber}
-          onChangeText={setPhoneNumber}
-          keyboardType="phone-pad"
-          maxLength={10}
+          placeholder="Email Address"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
           autoCapitalize="none"
+          autoCorrect={false}
         />
 
         {error && <Text style={styles.errorText}>{error}</Text>}

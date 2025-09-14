@@ -4,72 +4,15 @@ import SystemConfig from '../../models/SystemConfig';
 import { ApiResponse } from '../../utils/apiResponse';
 
 /**
- * Get all system configurations
+ * Get the system configuration
  */
-export const getSystemConfigs = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { category, isPublic } = req.query;
-
-  let filter: any = {};
-
-  if (category && category !== 'all') {
-    filter.category = category;
-  }
-
-  if (isPublic !== undefined) {
-    filter.isPublic = isPublic === 'true';
-  }
-
-  const configs = await SystemConfig.find(filter)
-    .populate('updatedBy', 'firstName lastName email')
-    .sort({ category: 1, key: 1 });
-
-  ApiResponse.success(res, {
-    configs,
-    total: configs.length
-  });
-});
-
-/**
- * Get system configuration by key
- */
-export const getSystemConfig = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { key } = req.params;
-
-  const config = await SystemConfig.findOne({ key })
-    .populate('updatedBy', 'firstName lastName email');
+export const getSystemConfig = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+  const config = await SystemConfig.getConfig();
 
   if (!config) {
     ApiResponse.error(res, 'System configuration not found');
     return;
   }
-
-  ApiResponse.success(res, config);
-});
-
-/**
- * Create new system configuration
- */
-export const createSystemConfig = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { key, value, type, category, description, isPublic } = req.body;
-
-  // Check if configuration already exists
-  const existingConfig = await SystemConfig.findOne({ key });
-  if (existingConfig) {
-    ApiResponse.error(res, 'System configuration with this key already exists');
-    return;
-  }
-
-  const config = await SystemConfig.create({
-    key,
-    value,
-    type,
-    category,
-    description,
-    isPublic: isPublic || false,
-    updatedBy: req.user?.id || req.admin?.id
-  });
-
-  await config.populate('updatedBy', 'firstName lastName email');
 
   ApiResponse.success(res, config);
 });
@@ -78,115 +21,23 @@ export const createSystemConfig = asyncHandler(async (req: Request, res: Respons
  * Update system configuration
  */
 export const updateSystemConfig = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { key } = req.params;
-  const { value, type, category, description, isPublic } = req.body;
+  const { app, pricing, notifications, security, features, geolocation, payment, api, backup, monitoring } = req.body;
 
-  const config = await SystemConfig.findOne({ key });
+  const updates: any = {};
+  if (app !== undefined) updates.app = app;
+  if (pricing !== undefined) updates.pricing = pricing;
+  if (notifications !== undefined) updates.notifications = notifications;
+  if (security !== undefined) updates.security = security;
+  if (features !== undefined) updates.features = features;
+  if (geolocation !== undefined) updates.geolocation = geolocation;
+  if (payment !== undefined) updates.payment = payment;
+  if (api !== undefined) updates.api = api;
+  if (backup !== undefined) updates.backup = backup;
+  if (monitoring !== undefined) updates.monitoring = monitoring;
 
-  if (!config) {
-    ApiResponse.error(res, 'System configuration not found');
-    return;
-  }
-
-  // Update fields
-  if (value !== undefined) config.value = value;
-  if (type !== undefined) config.type = type;
-  if (category !== undefined) config.category = category;
-  if (description !== undefined) config.description = description;
-  if (isPublic !== undefined) config.isPublic = isPublic;
-  config.updatedBy = req.user?.id || req.admin?.id;
-
-  await config.save();
-  await config.populate('updatedBy', 'firstName lastName email');
+  const config = await SystemConfig.updateConfig(updates, req.user?.id || req.admin?.id);
 
   ApiResponse.success(res, config);
-});
-
-/**
- * Delete system configuration
- */
-export const deleteSystemConfig = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { key } = req.params;
-
-  const config = await SystemConfig.findOneAndDelete({ key });
-
-  if (!config) {
-    ApiResponse.error(res, 'System configuration not found');
-    return;
-  }
-
-  ApiResponse.success(res, 'System configuration deleted successfully');
-});
-
-/**
- * Bulk update system configurations
- */
-export const bulkUpdateSystemConfigs = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { configs } = req.body;
-
-  if (!Array.isArray(configs)) {
-    ApiResponse.error(res, 'Configs must be an array');
-    return;
-  }
-
-  const results: any[] = [];
-  const errors: any[] = [];
-
-  for (const configData of configs) {
-    try {
-      const { key, value, type, category, description, isPublic } = configData;
-
-      const updateData: any = { updatedBy: req.user?.id || req.admin?.id };
-      if (value !== undefined) updateData.value = value;
-      if (type !== undefined) updateData.type = type;
-      if (category !== undefined) updateData.category = category;
-      if (description !== undefined) updateData.description = description;
-      if (isPublic !== undefined) updateData.isPublic = isPublic;
-
-      const config = await SystemConfig.findOneAndUpdate(
-        { key },
-        updateData,
-        {
-          new: true,
-          upsert: true,
-          runValidators: true
-        }
-      ).populate('updatedBy', 'firstName lastName email');
-
-      results.push(config);
-    } catch (error: any) {
-      errors.push({
-        key: configData.key,
-        error: error.message
-      });
-    }
-  }
-
-  ApiResponse.success(res, {
-    updated: results.length,
-    errors: errors.length > 0 ? errors : undefined,
-    configs: results
-  });
-});
-
-/**
- * Get public system configurations
- */
-export const getPublicSystemConfigs = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
-  const configs = await SystemConfig.find({ isPublic: true })
-    .select('key value type category description')
-    .sort({ category: 1, key: 1 });
-
-  // Transform to key-value pairs for easier client consumption
-  const configMap: { [key: string]: any } = {};
-  configs.forEach((config: any) => {
-    configMap[config.key] = config.value;
-  });
-
-  ApiResponse.success(res, {
-    configs: configMap,
-    total: configs.length
-  });
 });
 
 /**
@@ -194,229 +45,283 @@ export const getPublicSystemConfigs = asyncHandler(async (_req: Request, res: Re
  */
 export const getConfigCategories = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
   const categories = [
-    { value: 'general', label: 'General Settings' },
-    { value: 'payment', label: 'Payment Settings' },
-    { value: 'notification', label: 'Notification Settings' },
+    { value: 'app', label: 'Application Settings' },
+    { value: 'pricing', label: 'Pricing Settings' },
+    { value: 'notifications', label: 'Notification Settings' },
     { value: 'security', label: 'Security Settings' },
     { value: 'features', label: 'Feature Toggles' },
-    { value: 'pricing', label: 'Pricing Settings' },
-    { value: 'limits', label: 'System Limits' }
+    { value: 'geolocation', label: 'Location Settings' },
+    { value: 'payment', label: 'Payment Settings' },
+    { value: 'api', label: 'API Settings' },
+    { value: 'backup', label: 'Backup Settings' },
+    { value: 'monitoring', label: 'Monitoring Settings' }
   ];
 
   ApiResponse.success(res, categories);
 });
 
 /**
- * Initialize default system configurations
+ * Initialize default system configuration
  */
-export const initializeDefaultConfigs = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const defaultConfigs = [
-    // General Settings
-    {
-      key: 'app_name',
-      value: 'RideShare Pro',
-      type: 'string',
-      category: 'general',
-      description: 'Application name displayed throughout the system',
-      isPublic: true
-    },
-    {
-      key: 'app_version',
-      value: '1.0.0',
-      type: 'string',
-      category: 'general',
-      description: 'Current application version',
-      isPublic: true
-    },
-    {
-      key: 'maintenance_mode',
-      value: false,
-      type: 'boolean',
-      category: 'general',
-      description: 'Enable maintenance mode to disable user access',
-      isPublic: true
-    },
+export const initializeDefaultConfig = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const existingConfig = await SystemConfig.getConfig();
 
-    // Payment Settings
-    {
-      key: 'platform_commission_rate',
-      value: 0.15,
-      type: 'number',
-      category: 'payment',
-      description: 'Platform commission rate as decimal (0.15 = 15%)',
-      isPublic: false
-    },
-    {
-      key: 'minimum_fare',
-      value: 5.00,
-      type: 'number',
-      category: 'payment',
-      description: 'Minimum fare amount for rides',
-      isPublic: true
-    },
-    {
-      key: 'currency',
-      value: 'USD',
-      type: 'string',
-      category: 'payment',
-      description: 'Default currency for transactions',
-      isPublic: true
-    },
-
-    // Notification Settings
-    {
-      key: 'email_notifications_enabled',
-      value: true,
-      type: 'boolean',
-      category: 'notification',
-      description: 'Enable email notifications system-wide',
-      isPublic: false
-    },
-    {
-      key: 'sms_notifications_enabled',
-      value: true,
-      type: 'boolean',
-      category: 'notification',
-      description: 'Enable SMS notifications system-wide',
-      isPublic: false
-    },
-    {
-      key: 'push_notifications_enabled',
-      value: true,
-      type: 'boolean',
-      category: 'notification',
-      description: 'Enable push notifications system-wide',
-      isPublic: false
-    },
-
-    // Security Settings
-    {
-      key: 'session_timeout',
-      value: 3600000,
-      type: 'number',
-      category: 'security',
-      description: 'Session timeout in milliseconds (1 hour = 3600000)',
-      isPublic: false
-    },
-    {
-      key: 'max_login_attempts',
-      value: 5,
-      type: 'number',
-      category: 'security',
-      description: 'Maximum login attempts before account lockout',
-      isPublic: false
-    },
-    {
-      key: 'password_min_length',
-      value: 8,
-      type: 'number',
-      category: 'security',
-      description: 'Minimum password length requirement',
-      isPublic: true
-    },
-
-    // Feature Toggles
-    {
-      key: 'pooled_rides_enabled',
-      value: true,
-      type: 'boolean',
-      category: 'features',
-      description: 'Enable pooled rides feature',
-      isPublic: true
-    },
-    {
-      key: 'subscription_enabled',
-      value: true,
-      type: 'boolean',
-      category: 'features',
-      description: 'Enable subscription features',
-      isPublic: true
-    },
-    {
-      key: 'driver_rating_enabled',
-      value: true,
-      type: 'boolean',
-      category: 'features',
-      description: 'Enable driver rating system',
-      isPublic: true
-    },
-
-    // Pricing Settings
-    {
-      key: 'base_fare',
-      value: 2.50,
-      type: 'number',
-      category: 'pricing',
-      description: 'Base fare amount',
-      isPublic: true
-    },
-    {
-      key: 'per_mile_rate',
-      value: 1.25,
-      type: 'number',
-      category: 'pricing',
-      description: 'Rate per mile',
-      isPublic: true
-    },
-    {
-      key: 'per_minute_rate',
-      value: 0.20,
-      type: 'number',
-      category: 'pricing',
-      description: 'Rate per minute',
-      isPublic: true
-    },
-
-    // System Limits
-    {
-      key: 'max_ride_distance',
-      value: 500,
-      type: 'number',
-      category: 'limits',
-      description: 'Maximum ride distance in miles',
-      isPublic: true
-    },
-    {
-      key: 'max_ride_duration',
-      value: 180,
-      type: 'number',
-      category: 'limits',
-      description: 'Maximum ride duration in minutes',
-      isPublic: true
-    },
-    {
-      key: 'max_passengers_per_ride',
-      value: 4,
-      type: 'number',
-      category: 'limits',
-      description: 'Maximum passengers per ride',
-      isPublic: true
-    }
-  ];
-
-  const results = [];
-  const skipped = [];
-
-  for (const configData of defaultConfigs) {
-    try {
-      const existing = await SystemConfig.findOne({ key: configData.key });
-      if (!existing) {
-        const config = await SystemConfig.create({
-          ...configData,
-          updatedBy: req.user?.id || req.admin?.id
-        });
-        results.push(config);
-      } else {
-        skipped.push(configData.key);
-      }
-    } catch (error: any) {
-      console.error(`Error creating config ${configData.key}:`, error.message);
-    }
+  if (existingConfig) {
+    ApiResponse.error(res, 'System configuration already exists');
+    return;
   }
 
+  const defaultConfig = {
+    app: {
+      name: 'RideShare Pro',
+      version: '1.0.0',
+      description: 'Professional ride-sharing platform',
+      maintenanceMode: false,
+      registrationEnabled: true,
+      supportEmail: 'support@rideshare.com',
+      supportPhone: '+1-234-567-8900'
+    },
+    pricing: {
+      baseFare: 5.0,
+      perKmRate: 1.5,
+      perMinuteRate: 0.25,
+      bookingFee: 2.0,
+      cancellationFee: 3.0,
+      adminCommission: 15.0,
+      currency: 'USD'
+    },
+    notifications: {
+      emailNotifications: true,
+      smsNotifications: true,
+      pushNotifications: true,
+      rideUpdates: true,
+      promotionalMessages: false,
+      driverNotifications: true
+    },
+    security: {
+      twoFactorAuth: false,
+      sessionTimeout: 30,
+      passwordMinLength: 8,
+      maxLoginAttempts: 5,
+      requireEmailVerification: true
+    },
+    features: {
+      rideScheduling: true,
+      rideSharing: true,
+      multipleStops: true,
+      cashPayments: true,
+      cardPayments: true,
+      walletPayments: true,
+      ratings: true,
+      driverTracking: true
+    },
+    geolocation: {
+      defaultLatitude: 12.9716,
+      defaultLongitude: 77.5946,
+      searchRadius: 5,
+      maxPickupDistance: 2,
+      defaultCountry: 'India',
+      defaultCity: 'Bangalore'
+    },
+    payment: {
+      stripeEnabled: true,
+      razorpayEnabled: false,
+      paypalEnabled: true,
+      stripePublishableKey: 'pk_test_...',
+      razorpayKeyId: '',
+      paypalClientId: 'client_id_...',
+      testMode: true
+    },
+    api: {
+      rateLimitEnabled: true,
+      maxRequestsPerMinute: 100,
+      apiVersion: 'v1',
+      corsEnabled: true,
+      allowedOrigins: ['http://localhost:3000', 'https://yourapp.com']
+    },
+    backup: {
+      autoBackupEnabled: true,
+      backupFrequency: 'daily',
+      retentionDays: 30,
+      lastBackupDate: '2025-01-13T10:00:00Z',
+      backupLocation: '/backups/database'
+    },
+    monitoring: {
+      errorLoggingEnabled: true,
+      performanceMonitoring: true,
+      userActivityTracking: true,
+      logRetentionDays: 90,
+      alertEmail: 'admin@rideshare.com'
+    }
+  };
+
+  const config = await SystemConfig.updateConfig(defaultConfig, req.user?.id || req.admin?.id);
+
   ApiResponse.success(res, {
-    created: results.length,
-    skipped: skipped.length,
-    total: results.length + skipped.length
+    message: 'Default system configuration initialized successfully',
+    config
   });
+});
+
+/**
+ * Reset system configuration to defaults
+ */
+export const resetSystemConfig = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const defaultConfig = {
+    app: {
+      name: 'RideShare Pro',
+      version: '1.0.0',
+      description: 'Professional ride-sharing platform',
+      maintenanceMode: false,
+      registrationEnabled: true,
+      supportEmail: 'support@rideshare.com',
+      supportPhone: '+1-234-567-8900'
+    },
+    pricing: {
+      baseFare: 5.0,
+      perKmRate: 1.5,
+      perMinuteRate: 0.25,
+      bookingFee: 2.0,
+      cancellationFee: 3.0,
+      adminCommission: 15.0,
+      currency: 'USD'
+    },
+    notifications: {
+      emailNotifications: true,
+      smsNotifications: true,
+      pushNotifications: true,
+      rideUpdates: true,
+      promotionalMessages: false,
+      driverNotifications: true
+    },
+    security: {
+      twoFactorAuth: false,
+      sessionTimeout: 30,
+      passwordMinLength: 8,
+      maxLoginAttempts: 5,
+      requireEmailVerification: true
+    },
+    features: {
+      rideScheduling: true,
+      rideSharing: true,
+      multipleStops: true,
+      cashPayments: true,
+      cardPayments: true,
+      walletPayments: true,
+      ratings: true,
+      driverTracking: true
+    },
+    geolocation: {
+      defaultLatitude: 12.9716,
+      defaultLongitude: 77.5946,
+      searchRadius: 5,
+      maxPickupDistance: 2,
+      defaultCountry: 'India',
+      defaultCity: 'Bangalore'
+    },
+    payment: {
+      stripeEnabled: true,
+      razorpayEnabled: false,
+      paypalEnabled: true,
+      stripePublishableKey: 'pk_test_...',
+      razorpayKeyId: '',
+      paypalClientId: 'client_id_...',
+      testMode: true
+    },
+    api: {
+      rateLimitEnabled: true,
+      maxRequestsPerMinute: 100,
+      apiVersion: 'v1',
+      corsEnabled: true,
+      allowedOrigins: ['http://localhost:3000', 'https://yourapp.com']
+    },
+    backup: {
+      autoBackupEnabled: true,
+      backupFrequency: 'daily',
+      retentionDays: 30,
+      lastBackupDate: '2025-01-13T10:00:00Z',
+      backupLocation: '/backups/database'
+    },
+    monitoring: {
+      errorLoggingEnabled: true,
+      performanceMonitoring: true,
+      userActivityTracking: true,
+      logRetentionDays: 90,
+      alertEmail: 'admin@rideshare.com'
+    }
+  };
+
+  const config = await SystemConfig.updateConfig(defaultConfig, req.user?.id || req.admin?.id);
+
+  ApiResponse.success(res, {
+    message: 'System configuration reset to defaults successfully',
+    config
+  });
+});
+
+/**
+ * Get public system configuration (limited fields)
+ */
+export const getPublicSystemConfig = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+  const config = await SystemConfig.getConfig();
+
+  if (!config) {
+    ApiResponse.error(res, 'System configuration not found');
+    return;
+  }
+
+  // Return only public-safe configuration
+  const publicConfig = {
+    app: {
+      name: config.app.name,
+      version: config.app.version,
+      description: config.app.description,
+      maintenanceMode: config.app.maintenanceMode
+    },
+    pricing: {
+      currency: config.pricing.currency
+    },
+    features: {
+      rideScheduling: config.features.rideScheduling,
+      rideSharing: config.features.rideSharing,
+      ratings: config.features.ratings
+    }
+  };
+
+  ApiResponse.success(res, publicConfig);
+});
+
+/**
+ * Legacy functions for backward compatibility - these will be deprecated
+ */
+export const getSystemConfigs = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+  ApiResponse.error(res, 'This endpoint is deprecated. Use /admin/settings instead.');
+});
+
+export const getSystemConfigByKey = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+  ApiResponse.error(res, 'This endpoint is deprecated. Use /admin/settings instead.');
+});
+
+export const createSystemConfig = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+  ApiResponse.error(res, 'This endpoint is deprecated. Use /admin/settings instead.');
+});
+
+export const updateSystemConfigByKey = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+  ApiResponse.error(res, 'This endpoint is deprecated. Use /admin/settings instead.');
+});
+
+export const deleteSystemConfig = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+  ApiResponse.error(res, 'This endpoint is deprecated. Use /admin/settings instead.');
+});
+
+export const bulkUpdateSystemConfigs = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+  ApiResponse.error(res, 'This endpoint is deprecated. Use /admin/settings instead.');
+});
+
+export const getPublicSystemConfigs = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+  ApiResponse.error(res, 'This endpoint is deprecated. Use /admin/settings instead.');
+});
+
+export const initializeDefaultConfigs = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+  ApiResponse.error(res, 'This endpoint is deprecated. Use /admin/settings instead.');
 });

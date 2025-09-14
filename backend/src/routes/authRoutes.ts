@@ -14,9 +14,9 @@ const router = Router();
 
 // Validation rules
 const registerValidation = [
-  body('phoneNumber')
-    .matches(/^\+91[6-9]\d{9}$/)
-    .withMessage('Please provide a valid Indian phone number'),
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address'),
   body('firstName')
     .trim()
     .isLength({ min: 2, max: 50 })
@@ -28,10 +28,10 @@ const registerValidation = [
   body('role')
     .isIn(Object.values(UserRole))
     .withMessage('Invalid user role'),
-  body('email')
+  body('phoneNumber')
     .optional()
-    .isEmail()
-    .withMessage('Please provide a valid email address'),
+    .matches(/^\+91[6-9]\d{9}$/)
+    .withMessage('Please provide a valid Indian phone number'),
   body('referralCode')
     .optional()
     .isLength({ min: 6, max: 8 })
@@ -39,9 +39,9 @@ const registerValidation = [
 ];
 
 const loginValidation = [
-  body('phoneNumber')
-    .matches(/^\+91[6-9]\d{9}$/)
-    .withMessage('Please provide a valid Indian phone number')
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
 ];
 
 const adminLoginValidation = [
@@ -54,13 +54,13 @@ const adminLoginValidation = [
 ];
 
 const otpValidation = [
-  body('phoneNumber')
-    .matches(/^\+91[6-9]\d{9}$/)
-    .withMessage('Please provide a valid Indian phone number'),
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address'),
   body('otp')
-    .isLength({ min: 4, max: 4 })
+    .isLength({ min: 6, max: 6 })
     .isNumeric()
-    .withMessage('OTP must be a 4-digit number')
+    .withMessage('OTP must be a 6-digit number')
 ];
 
 // Public routes
@@ -68,7 +68,7 @@ router.post('/register', registerValidation, authController.register);
 router.post('/login', loginValidation, authController.login);
 router.post('/admin/login', adminLoginValidation, authController.adminLogin);
 router.post('/send-otp', loginValidation, authController.sendLoginOTP);
-router.post('/verify-phone', otpValidation, authController.verifyPhoneNumber);
+router.post('/verify-otp', otpValidation, authController.verifyEmailOTP);
 
 // Protected routes
 router.use(protect); // All routes below this middleware require authentication

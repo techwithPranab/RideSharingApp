@@ -61,15 +61,21 @@ export const getRides = asyncHandler(async (req: Request, res: Response) => {
   const totalRides = await Ride.countDocuments(query);
   const totalPages = Math.ceil(totalRides / limitNum);
 
-  // Add additional computed fields
-  const ridesWithStats = rides.map(ride => ({
-    ...ride,
-    passengerCount: ride.passengers.length,
-    totalPassengerFare: ride.passengers.reduce((sum, p) => sum + p.fare, 0),
-    averageRating: ride.passengers.length > 0
-      ? ride.passengers.reduce((sum, p) => sum + (p.rating || 0), 0) / ride.passengers.length
-      : null
-  }));
+  // Add additional computed fields and transform data for frontend compatibility
+  const ridesWithStats = rides.map(ride => {
+    const firstPassenger = ride.passengers[0];
+    return {
+      ...ride,
+      // Add computed fields for frontend compatibility
+      pickupLocation: firstPassenger?.pickupLocation || null,
+      dropoffLocation: firstPassenger?.dropoffLocation || null,
+      passengerCount: ride.passengers.length,
+      totalPassengerFare: ride.passengers.reduce((sum, p) => sum + p.fare, 0),
+      averageRating: ride.passengers.length > 0
+        ? ride.passengers.reduce((sum, p) => sum + (p.rating || 0), 0) / ride.passengers.length
+        : null
+    };
+  });
 
   res.status(200).json({
     success: true,
@@ -109,13 +115,19 @@ export const getRideById = asyncHandler(async (req: Request, res: Response): Pro
   // Get ride statistics
   const rideStats = await getRideStats(id);
 
+  // Transform ride data for frontend compatibility
+  const firstPassenger = ride.passengers[0];
+  const transformedRide = {
+    ...ride.toObject(),
+    ...rideStats,
+    pickupLocation: firstPassenger?.pickupLocation || null,
+    dropoffLocation: firstPassenger?.dropoffLocation || null
+  };
+
   res.status(200).json({
     success: true,
     data: {
-      ride: {
-        ...ride.toObject(),
-        ...rideStats
-      }
+      ride: transformedRide
     }
   });
 });
@@ -174,16 +186,21 @@ export const getActiveRides = asyncHandler(async (_req: Request, res: Response) 
   .populate('passengers.userId', 'firstName lastName')
   .sort({ createdAt: -1 });
 
-  // Add real-time status info
-  const ridesWithStatus = activeRides.map(ride => ({
-    ...ride.toObject(),
-    timeElapsed: ride.startedAt
-      ? Math.floor((Date.now() - ride.startedAt.getTime()) / (1000 * 60)) // minutes
-      : Math.floor((Date.now() - ride.createdAt.getTime()) / (1000 * 60)), // minutes since request
-    estimatedTimeRemaining: ride.estimatedDuration && ride.startedAt
-      ? Math.max(0, ride.estimatedDuration - Math.floor((Date.now() - ride.startedAt.getTime()) / (1000 * 60)))
-      : ride.estimatedDuration || 0
-  }));
+  // Add real-time status info and transform data for frontend compatibility
+  const ridesWithStatus = activeRides.map(ride => {
+    const firstPassenger = ride.passengers[0];
+    return {
+      ...ride.toObject(),
+      pickupLocation: firstPassenger?.pickupLocation || null,
+      dropoffLocation: firstPassenger?.dropoffLocation || null,
+      timeElapsed: ride.startedAt
+        ? Math.floor((Date.now() - ride.startedAt.getTime()) / (1000 * 60)) // minutes
+        : Math.floor((Date.now() - ride.createdAt.getTime()) / (1000 * 60)), // minutes since request
+      estimatedTimeRemaining: ride.estimatedDuration && ride.startedAt
+        ? Math.max(0, ride.estimatedDuration - Math.floor((Date.now() - ride.startedAt.getTime()) / (1000 * 60)))
+        : ride.estimatedDuration || 0
+    };
+  });
 
   res.status(200).json({
     success: true,

@@ -16,7 +16,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 
 // Import types
 import { RidesStackParamList } from '../../navigation/types';
-import { rideAPI } from '../../services/api';
+import { driverAPI, rideAPI } from '../../services/api';
 
 type ActiveRideScreenNavigationProp = StackNavigationProp<RidesStackParamList, 'ActiveRide'>;
 type ActiveRideScreenRouteProp = RouteProp<RidesStackParamList, 'ActiveRide'>;
@@ -117,9 +117,14 @@ const ActiveRideScreen: React.FC = () => {
       [
         { text: 'Not yet', style: 'cancel' },
         { text: 'Complete', onPress: async () => {
+          if (!rideData) return;
+          
           try {
             // Call API to complete the ride
-            // await rideAPI.completeRide(rideId);
+            await driverAPI.completeRide(rideId, {
+              distance: rideData.distance,
+              duration: rideData.estimatedDuration
+            });
             Alert.alert('Ride Completed', 'Payment will be processed shortly.');
             navigation.goBack();
           } catch (error) {

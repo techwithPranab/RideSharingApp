@@ -284,11 +284,33 @@ export const getUserActivity = asyncHandler(async (req: Request, res: Response) 
   const activities = await Ride.find({
     $or: [{ riderId: id }, { driverId: id }]
   })
-  .populate('riderId', 'firstName lastName')
-  .populate('driverId', 'firstName lastName')
+  .populate({
+    path: 'driverId',
+    select: 'firstName lastName',
+    options: { lean: true }
+  })
+  .populate({
+    path: 'vehicleId',
+    select: 'make model licensePlate',
+    options: { lean: true }
+  })
   .sort({ createdAt: -1 })
   .skip(skip)
   .limit(limitNum);
+
+  // Transform activities to handle null populated fields
+  const transformedActivities = activities.map(activity => ({
+    ...activity.toObject(),
+    driverId: activity.driverId || {
+      firstName: 'Unknown',
+      lastName: 'Driver'
+    },
+    vehicleId: activity.vehicleId || {
+      make: 'Unknown',
+      model: 'Vehicle',
+      licensePlate: 'N/A'
+    }
+  }));
 
   const totalActivities = await Ride.countDocuments({
     $or: [{ riderId: id }, { driverId: id }]
@@ -297,7 +319,7 @@ export const getUserActivity = asyncHandler(async (req: Request, res: Response) 
   res.status(200).json({
     success: true,
     data: {
-      activities,
+      activities: transformedActivities,
       pagination: {
         currentPage: pageNum,
         totalPages: Math.ceil(totalActivities / limitNum),

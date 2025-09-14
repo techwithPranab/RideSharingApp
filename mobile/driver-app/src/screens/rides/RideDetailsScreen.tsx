@@ -17,30 +17,18 @@ import { useSelector } from 'react-redux';
 
 // Import types
 import { RidesStackParamList } from '../../navigation/types';
-import { driverAPI } from '../../services/api';
+import { Ride } from '../../types';
+import { driverAPI, rideAPI } from '../../services/api';
 
 type RideDetailsScreenNavigationProp = StackNavigationProp<RidesStackParamList, 'RideDetails'>;
 type RideDetailsScreenRouteProp = RouteProp<RidesStackParamList, 'RideDetails'>;
-
-interface RideData {
-  id: string;
-  riderName: string;
-  pickupLocation: string;
-  dropoffLocation: string;
-  fare: number;
-  status: string;
-  subscriptionDiscount: number;
-  hasActiveSubscription: boolean;
-  estimatedDuration: number;
-  distance: number;
-}
 
 const RideDetailsScreen: React.FC = () => {
   const navigation = useNavigation<RideDetailsScreenNavigationProp>();
   const route = useRoute<RideDetailsScreenRouteProp>();
   const { rideId } = route.params;
 
-  const [rideData, setRideData] = useState<RideData | null>(null);
+  const [rideData, setRideData] = useState<Ride | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -53,24 +41,18 @@ const RideDetailsScreen: React.FC = () => {
 
   const loadRideDetails = async () => {
     try {
-      // Mock data - replace with actual API call
-      const mockRideData: RideData = {
-        id: rideId,
-        riderName: 'John Doe',
-        pickupLocation: '123 Main St, City',
-        dropoffLocation: '456 Oak Ave, City',
-        fare: 250,
-        status: 'active',
-        subscriptionDiscount: 15,
-        hasActiveSubscription: true,
-        estimatedDuration: 25,
-        distance: 8.5,
-      };
-
-      setRideData(mockRideData);
-    } catch (error) {
+      setLoading(true);
+      const response = await rideAPI.getRide(rideId);
+      
+      if (response.data.success && response.data.data) {
+        setRideData(response.data.data);
+      } else {
+        throw new Error('Failed to load ride details');
+      }
+    } catch (error: any) {
       console.error('Error loading ride details:', error);
-      Alert.alert('Error', 'Failed to load ride details');
+      const errorMessage = error.response?.data?.error?.message || 'Failed to load ride details';
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -91,7 +73,7 @@ const RideDetailsScreen: React.FC = () => {
       await driverAPI.acceptRide(rideId, driverId);
 
       // Update ride status locally
-      setRideData(prev => prev ? { ...prev, status: 'active' } : null);
+      setRideData(prev => prev ? { ...prev, status: 'accepted' as const } : null);
 
       Alert.alert('Success', 'Ride accepted successfully!', [
         {
@@ -204,24 +186,36 @@ const RideDetailsScreen: React.FC = () => {
         {/* Rider Info */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Rider Information</Text>
-          <View style={styles.riderInfo}>
-            <View style={styles.riderAvatar}>
-              <Text style={styles.avatarText}>
-                {rideData.riderName.split(' ').map(n => n[0]).join('')}
-              </Text>
-            </View>
-            <View style={styles.riderDetails}>
-              <Text style={styles.riderName}>{rideData.riderName}</Text>
-              {rideData.hasActiveSubscription && (
-                <View style={styles.subscriptionBadge}>
-                  <Text style={styles.subscriptionIcon}>⭐</Text>
-                  <Text style={styles.subscriptionText}>
-                    Premium Rider ({rideData.subscriptionDiscount}% discount)
+          {rideData.passengers && rideData.passengers.length > 0 ? (
+            rideData.passengers.map((passenger, index) => (
+              <View key={passenger.userId} style={styles.riderInfo}>
+                <View style={styles.riderAvatar}>
+                  <Text style={styles.avatarText}>
+                    {(() => {
+                      if (passenger.user?.firstName && passenger.user?.lastName) {
+                        return `${passenger.user.firstName[0]}${passenger.user.lastName[0]}`;
+                      } else if (passenger.user?.firstName) {
+                        return passenger.user.firstName[0];
+                      } else {
+                        return 'R';
+                      }
+                    })()}
                   </Text>
                 </View>
-              )}
-            </View>
-          </View>
+                <View style={styles.riderDetails}>
+                  <Text style={styles.riderName}>
+                    {passenger.user
+                      ? `${passenger.user.firstName} ${passenger.user.lastName}`
+                      : 'Rider'
+                    }
+                  </Text>
+                  <Text style={styles.passengerFare}>Fare: ₹{passenger.fare}</Text>
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.placeholderText}>No passenger information available</Text>
+          )}
         </View>
 
         {/* Ride Details */}
@@ -229,15 +223,15 @@ const RideDetailsScreen: React.FC = () => {
           <Text style={styles.cardTitle}>Ride Details</Text>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>From:</Text>
-            <Text style={styles.detailValue}>{rideData.pickupLocation}</Text>
+            <Text style={styles.detailValue}>{rideData.pickupAddress}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>To:</Text>
-            <Text style={styles.detailValue}>{rideData.dropoffLocation}</Text>
+            <Text style={styles.detailValue}>{rideData.dropoffAddress}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Distance:</Text>
-            <Text style={styles.detailValue}>{rideData.distance} km</Text>
+            <Text style={styles.detailValue}>{rideData.estimatedDistance} km</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Duration:</Text>
@@ -251,32 +245,17 @@ const RideDetailsScreen: React.FC = () => {
           <View style={styles.fareContainer}>
             <View style={styles.fareRow}>
               <Text style={styles.fareLabel}>Base Fare:</Text>
-              <Text style={styles.fareValue}>₹{rideData.fare}</Text>
+              <Text style={styles.fareValue}>₹{rideData.baseFare}</Text>
             </View>
-            {rideData.hasActiveSubscription && rideData.subscriptionDiscount > 0 && (
-              <View style={styles.discountRow}>
-                <Text style={styles.discountLabel}>
-                  Subscription Discount ({rideData.subscriptionDiscount}%):
-                </Text>
-                <Text style={styles.discountValue}>
-                  -₹{Math.round((rideData.fare * rideData.subscriptionDiscount) / 100)}
-                </Text>
-              </View>
-            )}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Fare:</Text>
-              <Text style={styles.totalValue}>
-                ₹{rideData.hasActiveSubscription
-                  ? Math.round(rideData.fare * (1 - rideData.subscriptionDiscount / 100))
-                  : rideData.fare
-                }
-              </Text>
+              <Text style={styles.totalValue}>₹{rideData.totalFare}</Text>
             </View>
           </View>
         </View>
 
         {/* Action Buttons */}
-        {rideData.status === 'pending' && (
+        {rideData.status === 'requested' && (
           <View style={styles.actionButtons}>
             <TouchableOpacity
               style={[styles.actionButton, styles.declineButton]}
@@ -299,9 +278,9 @@ const RideDetailsScreen: React.FC = () => {
           </View>
         )}
 
-        {rideData.status === 'active' && (
+        {rideData.status === 'accepted' && (
           <View style={styles.statusCard}>
-            <Text style={styles.statusText}>Ride in Progress</Text>
+            <Text style={styles.statusText}>Ride Accepted</Text>
             <TouchableOpacity style={styles.completeButton}>
               <Text style={styles.completeButtonText}>Complete Ride</Text>
             </TouchableOpacity>
@@ -413,6 +392,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 4,
+  },
+  passengerFare: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
   },
   subscriptionBadge: {
     flexDirection: 'row',

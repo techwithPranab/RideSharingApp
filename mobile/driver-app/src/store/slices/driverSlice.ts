@@ -12,6 +12,10 @@ interface DriverState {
   vehicles: Vehicle[];
   stats: DriverStats | null;
   earnings: Earnings[];
+  earningsHistory: Earnings[];
+  weeklyEarnings: Earnings | null;
+  monthlyEarnings: Earnings | null;
+  payoutHistory: any[];
   isLoading: boolean;
   error: string | null;
 }
@@ -22,6 +26,10 @@ const initialState: DriverState = {
   vehicles: [],
   stats: null,
   earnings: [],
+  earningsHistory: [],
+  weeklyEarnings: null,
+  monthlyEarnings: null,
+  payoutHistory: [],
   isLoading: false,
   error: null,
 };
@@ -133,6 +141,83 @@ export const getDriverEarnings = createAsyncThunk(
   }
 );
 
+/**
+ * Get driver earnings history with pagination
+ */
+export const getDriverEarningsHistory = createAsyncThunk(
+  'driver/getEarningsHistory',
+  async ({ driverId, page = 1, limit = 20 }: { driverId: string; page?: number; limit?: number }, { rejectWithValue }) => {
+    try {
+      const response = await driverAPI.getEarningsHistory(driverId, page, limit);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error?.message || 'Failed to get earnings history');
+    }
+  }
+);
+
+/**
+ * Get driver weekly earnings breakdown
+ */
+export const getDriverWeeklyEarnings = createAsyncThunk(
+  'driver/getWeeklyEarnings',
+  async ({ driverId, weekStart }: { driverId: string; weekStart: string }, { rejectWithValue }) => {
+    try {
+      const response = await driverAPI.getEarnings(driverId, `weekly&start=${weekStart}`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error?.message || 'Failed to get weekly earnings');
+    }
+  }
+);
+
+/**
+ * Get driver monthly earnings breakdown
+ */
+export const getDriverMonthlyEarnings = createAsyncThunk(
+  'driver/getMonthlyEarnings',
+  async ({ driverId, month }: { driverId: string; month: string }, { rejectWithValue }) => {
+    try {
+      const response = await driverAPI.getEarnings(driverId, `monthly&month=${month}`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error?.message || 'Failed to get monthly earnings');
+    }
+  }
+);
+
+/**
+ * Request payout/withdrawal
+ */
+export const requestDriverPayout = createAsyncThunk(
+  'driver/requestPayout',
+  async ({ driverId, amount, paymentMethod }: { driverId: string; amount: number; paymentMethod: string }, { rejectWithValue }) => {
+    try {
+      const response = await driverAPI.requestWithdrawal(driverId, amount);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error?.message || 'Failed to request payout');
+    }
+  }
+);
+
+/**
+ * Get payout history
+ */
+export const getDriverPayoutHistory = createAsyncThunk(
+  'driver/getPayoutHistory',
+  async ({ driverId, page = 1, limit = 20 }: { driverId: string; page?: number; limit?: number }, { rejectWithValue }) => {
+    try {
+      // This would typically be a separate API endpoint for payout history
+      // For now, we'll use a placeholder
+      const response = await driverAPI.getEarningsHistory(driverId, page, limit);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.error?.message || 'Failed to get payout history');
+    }
+  }
+);
+
 // Driver slice
 const driverSlice = createSlice({
   name: 'driver',
@@ -161,6 +246,10 @@ const driverSlice = createSlice({
       state.vehicles = [];
       state.stats = null;
       state.earnings = [];
+      state.earningsHistory = [];
+      state.weeklyEarnings = null;
+      state.monthlyEarnings = null;
+      state.payoutHistory = [];
       state.error = null;
     },
   },
@@ -276,6 +365,87 @@ const driverSlice = createSlice({
         state.error = null;
       })
       .addCase(getDriverEarnings.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Get earnings history
+    builder
+      .addCase(getDriverEarningsHistory.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(getDriverEarningsHistory.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.earningsHistory = action.payload;
+        state.error = null;
+      })
+      .addCase(getDriverEarningsHistory.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Get weekly earnings
+    builder
+      .addCase(getDriverWeeklyEarnings.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(getDriverWeeklyEarnings.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.weeklyEarnings = action.payload;
+        state.error = null;
+      })
+      .addCase(getDriverWeeklyEarnings.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Get monthly earnings
+    builder
+      .addCase(getDriverMonthlyEarnings.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(getDriverMonthlyEarnings.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.monthlyEarnings = action.payload;
+        state.error = null;
+      })
+      .addCase(getDriverMonthlyEarnings.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Request payout
+    builder
+      .addCase(requestDriverPayout.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(requestDriverPayout.fulfilled, (state, action) => {
+        state.isLoading = false;
+        // Add the payout request to history
+        state.payoutHistory.unshift(action.payload);
+        state.error = null;
+      })
+      .addCase(requestDriverPayout.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Get payout history
+    builder
+      .addCase(getDriverPayoutHistory.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(getDriverPayoutHistory.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.payoutHistory = action.payload;
+        state.error = null;
+      })
+      .addCase(getDriverPayoutHistory.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });

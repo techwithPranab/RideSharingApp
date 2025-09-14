@@ -36,6 +36,27 @@ const toRadians = (degrees: number): number => {
 };
 
 /**
+ * Request location permissions
+ */
+export const requestPermissions = async (): Promise<boolean> => {
+  // This would typically use Expo Location or React Native Location
+  // For now, return true as a placeholder
+  return true;
+};
+
+/**
+ * Get current location
+ */
+export const getCurrentLocation = async (): Promise<{ latitude: number; longitude: number }> => {
+  // This would typically use Expo Location or React Native Location
+  // For now, return a placeholder location
+  return {
+    latitude: 40.7128,
+    longitude: -74.0060,
+  };
+};
+
+/**
  * Get address from coordinates (placeholder - would integrate with Google Maps API)
  */
 export const getAddressFromCoordinates = async (
@@ -124,4 +145,21 @@ export const getCompassDirection = (bearing: number): string => {
   const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
   const index = Math.round(bearing / 45) % 8;
   return directions[index] || 'N';
+};
+
+/**
+ * Location utilities object
+ */
+export const locationUtils = {
+  calculateDistance,
+  toRadians,
+  requestPermissions,
+  getCurrentLocation,
+  getAddressFromCoordinates,
+  getCoordinatesFromAddress,
+  isLocationWithinRadius,
+  formatLocation,
+  createLocation,
+  getBearing,
+  getCompassDirection,
 };

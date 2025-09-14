@@ -3,10 +3,11 @@
  */
 
 // API Configuration
-export const API_BASE_URL = 'http://localhost:3000/api'; // Change to production URL when deploying
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
+export const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || 'http://localhost:5000';
 
 // Google Maps API Key (should be in environment variables)
-export const GOOGLE_MAPS_API_KEY = 'your-google-maps-api-key';
+export const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'your-google-maps-api-key';
 
 // App Configuration
 export const APP_CONFIG = {
@@ -26,6 +27,21 @@ export const APP_CONFIG = {
   LOCATION_UPDATE_INTERVAL: 5000, // 5 seconds when online
   LOCATION_ACCURACY: 50, // meters
   OFFLINE_LOCATION_UPDATE_INTERVAL: 30000, // 30 seconds when offline
+
+  // Google Maps Configuration
+  GOOGLE_MAPS_CONFIG: {
+    INITIAL_REGION: {
+      latitude: 28.6139, // Delhi coordinates as default
+      longitude: 77.2090,
+      latitudeDelta: 0.0922,
+      longitudeDelta: 0.0421,
+    },
+    DEFAULT_ZOOM: 15,
+    MAX_ZOOM: 20,
+    MIN_ZOOM: 10,
+    CLUSTER_RADIUS: 50, // meters
+    SEARCH_RADIUS: 5000, // meters for place search
+  },
 
   // Earnings Configuration
   DRIVER_COMMISSION: 0.20, // 20% commission

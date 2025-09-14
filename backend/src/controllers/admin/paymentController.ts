@@ -54,27 +54,62 @@ export const getPayments = asyncHandler(async (req: Request, res: Response) => {
   const limitNum = parseInt(limit as string);
   const skip = (pageNum - 1) * limitNum;
 
-  // Get payments with populated data
+  // Get payments with populated data and error handling
   const payments = await Payment.find(query)
-    .populate('payerId', 'firstName lastName email phoneNumber')
-    .populate('rideId', 'rideId status totalFare')
+    .populate({
+      path: 'payerId',
+      select: 'firstName lastName email phoneNumber',
+      options: { lean: true }
+    })
+    .populate({
+      path: 'rideId',
+      select: 'rideId status totalFare',
+      options: { lean: true }
+    })
+    .populate({
+      path: 'payeeId',
+      select: 'firstName lastName email phoneNumber',
+      options: { lean: true }
+    })
     .sort({ [sortBy as string]: sortOrder === 'desc' ? -1 : 1 })
     .skip(skip)
     .limit(limitNum)
     .lean();
 
+  // Transform payments to ensure populated fields are handled properly
+  const transformedPayments = payments.map(payment => ({
+    ...payment,
+    payerId: payment.payerId || {
+      firstName: 'Unknown',
+      lastName: 'User',
+      email: 'N/A',
+      phoneNumber: 'N/A'
+    },
+    payeeId: payment.payeeId || {
+      firstName: 'Unknown',
+      lastName: 'User',
+      email: 'N/A',
+      phoneNumber: 'N/A'
+    },
+    rideId: payment.rideId || {
+      rideId: 'N/A',
+      status: 'N/A',
+      totalFare: 0
+    }
+  }));
+
   // Get total count for pagination
   const totalPayments = await Payment.countDocuments(query);
   const totalPages = Math.ceil(totalPayments / limitNum);
 
-  // Calculate totals
-  const totalAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
-  const successfulPayments = payments.filter(p => p.status === PaymentStatus.COMPLETED).length;
+  // Calculate totals using transformed payments
+  const totalAmount = transformedPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const successfulPayments = transformedPayments.filter(p => p.status === PaymentStatus.COMPLETED).length;
 
   res.status(200).json({
     success: true,
     data: {
-      payments,
+      payments: transformedPayments,
       pagination: {
         currentPage: pageNum,
         totalPages,
@@ -98,9 +133,21 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
   const { id } = req.params;
 
   const payment = await Payment.findById(id)
-    .populate('payerId', 'firstName lastName email phoneNumber')
-    .populate('rideId', 'rideId status totalFare driverId passengers')
-    .populate('payeeId', 'firstName lastName');
+    .populate({
+      path: 'payerId',
+      select: 'firstName lastName email phoneNumber',
+      options: { lean: true }
+    })
+    .populate({
+      path: 'rideId',
+      select: 'rideId status totalFare driverId passengers',
+      options: { lean: true }
+    })
+    .populate({
+      path: 'payeeId',
+      select: 'firstName lastName',
+      options: { lean: true }
+    });
 
   if (!payment) {
     res.status(404).json({
@@ -110,6 +157,28 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
     return;
   }
 
+  // Transform payment to ensure populated fields are handled properly
+  const transformedPayment = {
+    ...payment.toObject(),
+    payerId: payment.payerId || {
+      firstName: 'Unknown',
+      lastName: 'User',
+      email: 'N/A',
+      phoneNumber: 'N/A'
+    },
+    payeeId: payment.payeeId || {
+      firstName: 'Unknown',
+      lastName: 'User'
+    },
+    rideId: payment.rideId || {
+      rideId: 'N/A',
+      status: 'N/A',
+      totalFare: 0,
+      driverId: null,
+      passengers: []
+    }
+  };
+
   // Get payment history and related transactions
   const paymentHistory = await getPaymentHistory(id);
 
@@ -117,7 +186,7 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
     success: true,
     data: {
       payment: {
-        ...payment.toObject(),
+        ...transformedPayment,
         ...paymentHistory
       }
     }

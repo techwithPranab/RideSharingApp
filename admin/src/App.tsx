@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import UsersPage from './pages/UsersPage';
 import DriversPage from './pages/DriversPage';
+import DriverApprovalPage from './pages/DriverApprovalPage';
 import RidesPage from './pages/RidesPage';
 import PaymentsPage from './pages/PaymentsPage';
 import SubscriptionsPage from './pages/SubscriptionsPage';
@@ -27,6 +28,7 @@ function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="drivers" element={<DriversPage />} />
+          <Route path="driver-approval" element={<DriverApprovalPage />} />
           <Route path="rides" element={<RidesPage />} />
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="subscriptions" element={<SubscriptionsPage />} />

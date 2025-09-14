@@ -14,7 +14,10 @@ import { requireAdmin } from '../../middleware/adminAuth';
 
 const router = express.Router();
 
-// All routes require admin authentication
+// Public configurations (no admin auth required for this endpoint)
+router.get('/public/configs', getPublicSystemConfigs);
+
+// All routes below require admin authentication
 router.use(requireAdmin);
 
 // System configuration CRUD routes
@@ -30,8 +33,11 @@ router.route('/:key')
 // Bulk operations
 router.route('/bulk/update').put(bulkUpdateSystemConfigs);
 
-// Public configurations (no admin auth required for this endpoint)
-router.get('/public/configs', getPublicSystemConfigs);
+// Configuration categories
+router.get('/categories', getConfigCategories);
+
+// Initialize default configurations
+router.post('/initialize-defaults', initializeDefaultConfigs);
 
 // Configuration categories
 router.get('/categories', getConfigCategories);

@@ -29,10 +29,10 @@ type RegisterScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Reg
 
 const RegisterScreen: React.FC = () => {
   const [formData, setFormData] = useState({
-    phoneNumber: '',
+    email: '',
     firstName: '',
     lastName: '',
-    email: '',
+    phoneNumber: '',
     drivingLicenseNumber: '',
     vehicleMake: '',
     vehicleModel: '',
@@ -53,7 +53,7 @@ const RegisterScreen: React.FC = () => {
 
   const validateForm = () => {
     const {
-      phoneNumber,
+      email,
       firstName,
       lastName,
       drivingLicenseNumber,
@@ -66,8 +66,8 @@ const RegisterScreen: React.FC = () => {
       vehicleCapacity,
     } = formData;
 
-    if (!phoneNumber || phoneNumber.length !== 10) {
-      Alert.alert('Error', 'Please enter a valid 10-digit phone number');
+    if (!email || !email.includes('@')) {
+      Alert.alert('Error', 'Please enter a valid email address');
       return false;
     }
 
@@ -98,10 +98,10 @@ const RegisterScreen: React.FC = () => {
     if (!validateForm()) return;
 
     try {
-      await dispatch(sendOTP(formData.phoneNumber)).unwrap();
+      await dispatch(sendOTP(formData.email)).unwrap();
       // Navigate to OTP verification with registration data
       navigation.navigate('OTPVerification', {
-        phoneNumber: formData.phoneNumber,
+        email: formData.email,
         isLogin: false
       });
     } catch (error) {
@@ -126,11 +126,11 @@ const RegisterScreen: React.FC = () => {
 
         <TextInput
           style={styles.input}
-          placeholder="Phone Number (10 digits)"
-          value={formData.phoneNumber}
-          onChangeText={(value) => updateFormData('phoneNumber', value)}
-          keyboardType="phone-pad"
-          maxLength={10}
+          placeholder="Email Address"
+          value={formData.email}
+          onChangeText={(value) => updateFormData('email', value)}
+          keyboardType="email-address"
+          autoCapitalize="none"
         />
 
         <TextInput
@@ -151,11 +151,11 @@ const RegisterScreen: React.FC = () => {
 
         <TextInput
           style={styles.input}
-          placeholder="Email (optional)"
-          value={formData.email}
-          onChangeText={(value) => updateFormData('email', value)}
-          keyboardType="email-address"
-          autoCapitalize="none"
+          placeholder="Phone Number (optional)"
+          value={formData.phoneNumber}
+          onChangeText={(value) => updateFormData('phoneNumber', value)}
+          keyboardType="phone-pad"
+          maxLength={10}
         />
 
         <TextInput

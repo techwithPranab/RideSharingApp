@@ -39,10 +39,32 @@ export const getSubscriptionPlans = asyncHandler(async (req: Request, res: Respo
 
   const totalPlans = await SubscriptionPlan.countDocuments(query);
 
+  // Transform plans to match frontend expectations
+  const transformedPlans = plans.map(plan => {
+    const planObj = plan.toObject();
+
+    // Convert features object to array for frontend compatibility
+    const featuresArray = [];
+    if (planObj.features) {
+      if (planObj.features.unlimitedRides) featuresArray.push('Unlimited rides');
+      if (planObj.features.priorityBooking) featuresArray.push('Priority booking');
+      if (planObj.features.discountedRides) featuresArray.push(`Discounted rides (${planObj.features.discountPercentage}%)`);
+      if (planObj.features.freeCancellation) featuresArray.push('Free cancellation');
+      if (planObj.features.dedicatedSupport) featuresArray.push('Dedicated support');
+      if (planObj.features.earlyAccess) featuresArray.push('Early access to features');
+      if (planObj.features.maxRidesPerPeriod) featuresArray.push(`Max ${planObj.features.maxRidesPerPeriod} rides per period`);
+    }
+
+    return {
+      ...planObj,
+      features: featuresArray
+    };
+  });
+
   res.status(200).json({
     success: true,
     data: {
-      plans,
+      plans: transformedPlans,
       pagination: {
         currentPage: pageNum,
         totalPages: Math.ceil(totalPlans / limitNum),
@@ -67,9 +89,27 @@ export const getSubscriptionPlanById = asyncHandler(async (req: Request, res: Re
     return;
   }
 
+  // Transform plan to match frontend expectations
+  const planObj = plan.toObject();
+  const featuresArray = [];
+  if (planObj.features) {
+    if (planObj.features.unlimitedRides) featuresArray.push('Unlimited rides');
+    if (planObj.features.priorityBooking) featuresArray.push('Priority booking');
+    if (planObj.features.discountedRides) featuresArray.push(`Discounted rides (${planObj.features.discountPercentage}%)`);
+    if (planObj.features.freeCancellation) featuresArray.push('Free cancellation');
+    if (planObj.features.dedicatedSupport) featuresArray.push('Dedicated support');
+    if (planObj.features.earlyAccess) featuresArray.push('Early access to features');
+    if (planObj.features.maxRidesPerPeriod) featuresArray.push(`Max ${planObj.features.maxRidesPerPeriod} rides per period`);
+  }
+
+  const transformedPlan = {
+    ...planObj,
+    features: featuresArray
+  };
+
   res.status(200).json({
     success: true,
-    data: { plan }
+    data: { plan: transformedPlan }
   });
 });
 

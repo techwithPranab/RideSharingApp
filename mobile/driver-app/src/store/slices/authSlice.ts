@@ -4,6 +4,7 @@
  */
 
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { driverAPI } from '../../services/api';
 import { Driver, DriverLoginForm, DriverRegisterForm } from '../../types';
 
@@ -37,7 +38,7 @@ export const loginDriver = createAsyncThunk(
   async (credentials: DriverLoginForm, { rejectWithValue }) => {
     try {
       const response = await driverAPI.login(credentials);
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error?.message || 'Login failed');
     }
@@ -52,7 +53,7 @@ export const registerDriver = createAsyncThunk(
   async (driverData: DriverRegisterForm, { rejectWithValue }) => {
     try {
       const response = await driverAPI.register(driverData);
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error?.message || 'Registration failed');
     }
@@ -64,9 +65,10 @@ export const registerDriver = createAsyncThunk(
  */
 export const sendOTP = createAsyncThunk(
   'auth/sendOTP',
-  async (phoneNumber: string, { rejectWithValue }) => {
+  async (email: string, { rejectWithValue }) => {
     try {
-      const response = await driverAPI.sendOTP(phoneNumber);
+      console.log('Sending OTP to:', email);
+      const response = await driverAPI.sendOTP(email);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error?.message || 'Failed to send OTP');
@@ -79,10 +81,10 @@ export const sendOTP = createAsyncThunk(
  */
 export const verifyOTP = createAsyncThunk(
   'auth/verifyOTP',
-  async (data: { phoneNumber: string; otp: string }, { rejectWithValue }) => {
+  async (data: { email: string; otp: string }, { rejectWithValue }) => {
     try {
       const response = await driverAPI.verifyOTP(data);
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error?.message || 'OTP verification failed');
     }
@@ -112,6 +114,40 @@ export const updateOnlineStatus = createAsyncThunk(
 );
 
 /**
+ * Validate authentication state async thunk
+ */
+export const validateAuthAsync = createAsyncThunk(
+  'auth/validateAuth',
+  async (_, { getState }) => {
+    const state = getState() as any;
+    const { isAuthenticated, driver, token } = state.auth;
+    
+    // If isAuthenticated is true but driver or token is missing, clear everything
+    if (isAuthenticated && (!driver || !token)) {
+      console.log('Auth validation failed: Missing driver or token, clearing storage');
+      await AsyncStorage.removeItem('driver_token');
+      await AsyncStorage.removeItem('driver_id');
+      return { shouldLogout: true };
+    }
+    
+    return { shouldLogout: false };
+  }
+);
+
+/**
+ * Logout driver async thunk
+ */
+export const logoutDriverAsync = createAsyncThunk(
+  'auth/logoutDriver',
+  async () => {
+    // Clear AsyncStorage
+    await AsyncStorage.removeItem('driver_token');
+    await AsyncStorage.removeItem('driver_id');
+    return true;
+  }
+);
+
+/**
  * Refresh driver token
  */
 export const refreshToken = createAsyncThunk(
@@ -119,7 +155,7 @@ export const refreshToken = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await driverAPI.refreshToken();
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.error?.message || 'Token refresh failed');
     }
@@ -149,6 +185,19 @@ const authSlice = createSlice({
     setDriver: (state, action: PayloadAction<Driver>) => {
       state.driver = action.payload;
       state.isAuthenticated = true;
+    },
+
+    // Validate authentication state
+    validateAuth: (state) => {
+      // If isAuthenticated is true but driver or token is missing, logout
+      if (state.isAuthenticated && (!state.driver || !state.token)) {
+        console.log('Auth validation failed: Missing driver or token, logging out');
+        state.driver = null;
+        state.token = null;
+        state.isAuthenticated = false;
+        state.isOnline = false;
+        state.error = null;
+      }
     },
 
     // Update driver online status locally
@@ -181,11 +230,54 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(loginDriver.fulfilled, (state, action) => {
+        console.log('Login fulfilled with payload:', action.payload);
+        
+        // Handle both response formats: direct or wrapped in data
+        const responseData = action.payload.data || action.payload;
+        
+        // Validate the response structure
+        if (!responseData?.user || !responseData?.token) {
+          console.error('Invalid login response:', action.payload);
+          state.isLoading = false;
+          state.error = 'Invalid server response. Please try again.';
+          return;
+        }
+
         state.isLoading = false;
-        state.driver = action.payload.driver;
-        state.token = action.payload.token;
+        // Map backend response to frontend expected structure
+        state.driver = {
+          id: responseData.user.id,
+          email: responseData.user.email,
+          firstName: responseData.user.firstName,
+          lastName: responseData.user.lastName,
+          phoneNumber: responseData.user.phoneNumber || '',
+          role: responseData.user.role,
+          status: responseData.user.status || 'active',
+          isPhoneVerified: responseData.user.isPhoneVerified || false,
+          isEmailVerified: responseData.user.isEmailVerified || false,
+          averageRating: responseData.user.averageRating || 0,
+          totalRatings: 0,
+          kycStatus: responseData.user.kycStatus || 'not_submitted',
+          isOnline: false,
+          isAvailable: false,
+          vehicleIds: [],
+          vehicles: [],
+          totalEarnings: 0,
+          totalTrips: 0,
+          totalDistance: 0,
+          totalHours: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        state.token = responseData.token;
         state.isAuthenticated = true;
         state.error = null;
+        
+        // Save to AsyncStorage for screens that need direct access
+        AsyncStorage.setItem('driver_token', responseData.token);
+        AsyncStorage.setItem('driver_id', responseData.user.id);
+        
+        console.log('Login successful, driver authenticated:', responseData.user.id);
       })
       .addCase(loginDriver.rejected, (state, action) => {
         state.isLoading = false;
@@ -199,11 +291,54 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(registerDriver.fulfilled, (state, action) => {
+        console.log('Registration fulfilled with payload:', action.payload);
+        
+        // Handle both response formats: direct or wrapped in data
+        const responseData = action.payload.data || action.payload;
+        
+        // Validate the response structure
+        if (!responseData?.user || !responseData?.token) {
+          console.error('Invalid registration response:', action.payload);
+          state.isLoading = false;
+          state.error = 'Invalid server response. Please try again.';
+          return;
+        }
+
         state.isLoading = false;
-        state.driver = action.payload.driver;
-        state.token = action.payload.token;
+        // Map backend response to frontend expected structure
+        state.driver = {
+          id: responseData.user.id,
+          email: responseData.user.email,
+          firstName: responseData.user.firstName,
+          lastName: responseData.user.lastName,
+          phoneNumber: responseData.user.phoneNumber || '',
+          role: responseData.user.role,
+          status: responseData.user.status || 'active',
+          isPhoneVerified: responseData.user.isPhoneVerified || false,
+          isEmailVerified: responseData.user.isEmailVerified || false,
+          averageRating: responseData.user.averageRating || 0,
+          totalRatings: 0,
+          kycStatus: responseData.user.kycStatus || 'not_submitted',
+          isOnline: false,
+          isAvailable: false,
+          vehicleIds: [],
+          vehicles: [],
+          totalEarnings: 0,
+          totalTrips: 0,
+          totalDistance: 0,
+          totalHours: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        state.token = responseData.token;
         state.isAuthenticated = true;
         state.error = null;
+        
+        // Save to AsyncStorage for screens that need direct access
+        AsyncStorage.setItem('driver_token', responseData.token);
+        AsyncStorage.setItem('driver_id', responseData.user.id);
+        
+        console.log('Registration successful, driver authenticated:', responseData.user.id);
       })
       .addCase(registerDriver.rejected, (state, action) => {
         state.isLoading = false;
@@ -232,13 +367,57 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(verifyOTP.fulfilled, (state, action) => {
+        console.log('OTP verification fulfilled with payload:', action.payload);
+        
+        // Handle both response formats: direct or wrapped in data
+        const responseData = action.payload.data || action.payload;
+        
+        // Validate the response structure
+        if (!responseData?.user || !responseData?.token) {
+          console.error('Invalid OTP verification response:', action.payload);
+          state.isLoading = false;
+          state.error = 'Invalid server response. Please try again.';
+          return;
+        }
+
         state.isLoading = false;
-        state.driver = action.payload.driver;
-        state.token = action.payload.token;
+        // Map backend response to frontend expected structure
+        state.driver = {
+          id: responseData.user.id,
+          email: responseData.user.email,
+          firstName: responseData.user.firstName,
+          lastName: responseData.user.lastName,
+          phoneNumber: responseData.user.phoneNumber || '',
+          role: responseData.user.role,
+          status: responseData.user.status || 'active',
+          isPhoneVerified: responseData.user.isPhoneVerified || false,
+          isEmailVerified: responseData.user.isEmailVerified || false,
+          averageRating: responseData.user.averageRating || 0,
+          totalRatings: 0,
+          kycStatus: responseData.user.kycStatus || 'not_submitted',
+          isOnline: false,
+          isAvailable: false,
+          vehicleIds: [],
+          vehicles: [],
+          totalEarnings: 0,
+          totalTrips: 0,
+          totalDistance: 0,
+          totalHours: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        state.token = responseData.token;
         state.isAuthenticated = true;
         state.error = null;
+        
+        // Save to AsyncStorage for screens that need direct access
+        AsyncStorage.setItem('driver_token', responseData.token);
+        AsyncStorage.setItem('driver_id', responseData.user.id);
+        
+        console.log('OTP verification successful, driver authenticated:', responseData.user.id);
       })
       .addCase(verifyOTP.rejected, (state, action) => {
+        console.error('OTP verification rejected:', action.payload);
         state.isLoading = false;
         state.error = action.payload as string;
       });
@@ -269,11 +448,30 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(refreshToken.fulfilled, (state, action) => {
+        console.log('Token refresh fulfilled with payload:', action.payload);
+        
+        // Handle both response formats: direct or wrapped in data
+        const responseData = action.payload.data || action.payload;
+        
+        // Validate the response structure
+        if (!responseData?.token) {
+          console.error('Invalid token refresh response:', action.payload);
+          state.isLoading = false;
+          state.error = 'Invalid server response. Please try again.';
+          return;
+        }
+
         state.isLoading = false;
-        state.token = action.payload.token;
+        state.token = responseData.token;
         state.error = null;
+        
+        // Update AsyncStorage
+        AsyncStorage.setItem('driver_token', responseData.token);
+        
+        console.log('Token refresh successful');
       })
       .addCase(refreshToken.rejected, (state, action) => {
+        console.error('Token refresh rejected:', action.payload);
         state.isLoading = false;
         state.error = action.payload as string;
         // If token refresh fails, logout the driver
@@ -282,6 +480,28 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.isOnline = false;
       });
+
+    // Logout async
+    builder
+      .addCase(logoutDriverAsync.fulfilled, (state) => {
+        state.driver = null;
+        state.token = null;
+        state.isAuthenticated = false;
+        state.isOnline = false;
+        state.error = null;
+      });
+
+    // Validate auth async
+    builder
+      .addCase(validateAuthAsync.fulfilled, (state, action) => {
+        if (action.payload.shouldLogout) {
+          state.driver = null;
+          state.token = null;
+          state.isAuthenticated = false;
+          state.isOnline = false;
+          state.error = null;
+        }
+      });
   },
 });
 
@@ -289,6 +509,7 @@ export const {
   logoutDriver,
   clearError,
   setDriver,
+  validateAuth,
   setOnlineStatus,
   updateDriverLocation,
 } = authSlice.actions;

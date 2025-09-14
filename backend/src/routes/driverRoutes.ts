@@ -17,6 +17,219 @@ const router = Router();
 router.use(protect);
 
 /**
+ * @route GET /api/driver/:driverId
+ * @desc Get driver profile information
+ * @access Private (Driver only)
+ */
+router.get('/:driverId', [
+  param('driverId').isMongoId().withMessage('Valid driver ID is required')
+], async (req: any, res: any) => {
+  try {
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return ApiResponse.validationError(res, errors.array());
+    }
+
+    const { driverId } = req.params;
+
+    // Verify the authenticated user is the driver
+    if (req.user.id !== driverId) {
+      return ApiResponse.error(res, 'Unauthorized access to driver profile', 403);
+    }
+
+    // Get driver profile from database
+    const driver = await User.findById(driverId)
+      .select('-password -otp -otpExpiresAt -resetPasswordToken -resetPasswordExpiresAt')
+      .populate('vehicleIds', 'make model year licensePlate color vehicleType status');
+
+    if (!driver) {
+      return ApiResponse.error(res, 'Driver not found', 404);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Driver profile retrieved successfully',
+      data: {
+        id: driver._id,
+        email: driver.email,
+        firstName: driver.firstName,
+        lastName: driver.lastName,
+        phoneNumber: driver.phoneNumber,
+        role: driver.role,
+        status: driver.status,
+        isPhoneVerified: driver.isPhoneVerified,
+        isEmailVerified: driver.isEmailVerified,
+        averageRating: driver.averageRating,
+        totalRatings: driver.totalRatings,
+        kycStatus: driver.kycStatus,
+        isOnline: driver.isAvailable, // Map isAvailable to isOnline for frontend compatibility
+        isAvailable: driver.isAvailable,
+        vehicleIds: driver.vehicleIds,
+        vehicles: driver.vehicleIds, // Populated vehicles
+        totalEarnings: 0, // Placeholder - would need to be calculated from payments
+        totalTrips: 0, // Placeholder - would need to be calculated from rides
+        totalDistance: 0, // Placeholder - would need to be calculated from rides
+        totalHours: 0, // Placeholder - would need to be calculated from rides
+        createdAt: driver.createdAt,
+        updatedAt: driver.updatedAt,
+        lastActiveAt: driver.lastActiveAt,
+        currentLocation: driver.currentLocation,
+        drivingLicenseNumber: driver.drivingLicenseNumber,
+        drivingLicenseExpiry: driver.drivingLicenseExpiry
+      }
+    });
+
+  } catch (error: any) {
+    logger.error('Error getting driver profile:', error);
+    return ApiResponse.error(res, error.message || 'Failed to retrieve driver profile');
+  }
+});
+
+/**
+ * @route PUT /api/driver/:driverId
+ * @desc Update driver profile information
+ * @access Private (Driver only)
+ */
+router.put('/:driverId', [
+  param('driverId').isMongoId().withMessage('Valid driver ID is required'),
+  body('firstName').optional().isLength({ min: 2, max: 50 }).withMessage('First name must be 2-50 characters'),
+  body('lastName').optional().isLength({ min: 2, max: 50 }).withMessage('Last name must be 2-50 characters'),
+  body('phoneNumber').optional().matches(/^[6-9]\d{9}$/).withMessage('Valid Indian phone number required')
+], async (req: any, res: any) => {
+  try {
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return ApiResponse.validationError(res, errors.array());
+    }
+
+    const { driverId } = req.params;
+    const updateData = req.body;
+
+    // Verify the authenticated user is the driver
+    if (req.user.id !== driverId) {
+      return ApiResponse.error(res, 'Unauthorized profile update', 403);
+    }
+
+    // Remove sensitive fields that shouldn't be updated via this endpoint
+    delete updateData.password;
+    delete updateData.email;
+    delete updateData.role;
+    delete updateData.kycStatus;
+    delete updateData.totalEarnings;
+    delete updateData.totalTrips;
+    delete updateData.averageRating;
+    delete updateData.totalRatings;
+
+    // Update driver profile
+    const updatedDriver = await User.findByIdAndUpdate(
+      driverId,
+      { ...updateData, updatedAt: new Date() },
+      { new: true, runValidators: true }
+    )
+      .select('-password -otp -otpExpiresAt -resetPasswordToken -resetPasswordExpiresAt')
+      .populate('vehicleIds', 'make model year licensePlate color vehicleType status');
+
+    if (!updatedDriver) {
+      return ApiResponse.error(res, 'Driver not found', 404);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Driver profile updated successfully',
+      data: {
+        id: updatedDriver._id,
+        email: updatedDriver.email,
+        firstName: updatedDriver.firstName,
+        lastName: updatedDriver.lastName,
+        phoneNumber: updatedDriver.phoneNumber,
+        role: updatedDriver.role,
+        status: updatedDriver.status,
+        isPhoneVerified: updatedDriver.isPhoneVerified,
+        isEmailVerified: updatedDriver.isEmailVerified,
+        averageRating: updatedDriver.averageRating,
+        totalRatings: updatedDriver.totalRatings,
+        kycStatus: updatedDriver.kycStatus,
+        isOnline: updatedDriver.isAvailable, // Map isAvailable to isOnline for frontend compatibility
+        isAvailable: updatedDriver.isAvailable,
+        vehicleIds: updatedDriver.vehicleIds,
+        vehicles: updatedDriver.vehicleIds, // Populated vehicles
+        totalEarnings: 0, // Placeholder - would need to be calculated from payments
+        totalTrips: 0, // Placeholder - would need to be calculated from rides
+        totalDistance: 0, // Placeholder - would need to be calculated from rides
+        totalHours: 0, // Placeholder - would need to be calculated from rides
+        createdAt: updatedDriver.createdAt,
+        updatedAt: updatedDriver.updatedAt,
+        lastActiveAt: updatedDriver.lastActiveAt,
+        currentLocation: updatedDriver.currentLocation,
+        drivingLicenseNumber: updatedDriver.drivingLicenseNumber,
+        drivingLicenseExpiry: updatedDriver.drivingLicenseExpiry
+      }
+    });
+
+  } catch (error: any) {
+    logger.error('Error updating driver profile:', error);
+    return ApiResponse.error(res, error.message || 'Failed to update driver profile');
+  }
+});
+
+/**
+ * @route PUT /api/driver/:driverId/status
+ * @desc Update driver online status
+ * @access Private (Driver only)
+ */
+router.put('/:driverId/status', [
+  param('driverId').isMongoId().withMessage('Valid driver ID is required'),
+  body('isOnline').isBoolean().withMessage('isOnline must be a boolean')
+], async (req: any, res: any) => {
+  try {
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return ApiResponse.validationError(res, errors.array());
+    }
+
+    const { driverId } = req.params;
+    const { isOnline } = req.body;
+
+    // Verify the authenticated user is the driver
+    if (req.user.id !== driverId) {
+      return ApiResponse.error(res, 'Unauthorized status update', 403);
+    }
+
+    // Update driver online status
+    const updatedDriver = await User.findByIdAndUpdate(
+      driverId,
+      {
+        isAvailable: isOnline, // Map isOnline to isAvailable
+        lastActiveAt: new Date(),
+        updatedAt: new Date()
+      },
+      { new: true }
+    ).select('isAvailable lastActiveAt');
+
+    if (!updatedDriver) {
+      return ApiResponse.error(res, 'Driver not found', 404);
+    }
+
+    return ApiResponse.success(res, {
+      message: 'Driver status updated successfully',
+      driver: {
+        id: updatedDriver._id,
+        isAvailable: updatedDriver.isAvailable, // Return isAvailable as isOnline for frontend compatibility
+        isOnline: updatedDriver.isAvailable, // Also return as isOnline for frontend compatibility
+        lastActiveAt: updatedDriver.lastActiveAt
+      }
+    });
+
+  } catch (error: any) {
+    logger.error('Error updating driver status:', error);
+    return ApiResponse.error(res, error.message || 'Failed to update driver status');
+  }
+});
+
+/**
  * @route GET /api/driver/:driverId/earnings
  * @desc Get driver earnings for a specific period
  * @access Private (Driver only)

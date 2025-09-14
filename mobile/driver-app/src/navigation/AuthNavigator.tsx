@@ -18,6 +18,8 @@ import { AuthStackParamList } from './types';
 const Stack = createStackNavigator<AuthStackParamList>();
 
 const AuthNavigator: React.FC = () => {
+  console.log('AuthNavigator rendered');
+  
   return (
     <Stack.Navigator
       initialRouteName="Login"

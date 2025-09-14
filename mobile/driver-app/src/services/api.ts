@@ -16,7 +16,7 @@ const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
+console.log('API Base URL:', API_BASE_URL);
 // Request interceptor to add auth token
 api.interceptors.request.use(
   async (config) => {
@@ -46,21 +46,21 @@ api.interceptors.response.use(
 
 // Driver API endpoints
 export const driverAPI = {
-  // Authentication
+  // Authentication - Use auth routes
   login: (credentials: DriverLoginForm): Promise<AxiosResponse> =>
-    api.post('/driver/login', credentials),
+    api.post('/auth/login', credentials),
 
   register: (driverData: DriverRegisterForm): Promise<AxiosResponse> =>
-    api.post('/driver/register', driverData),
+    api.post('/auth/register', driverData),
 
-  sendOTP: (phoneNumber: string): Promise<AxiosResponse> =>
-    api.post('/driver/send-otp', { phoneNumber }),
+  sendOTP: (email: string): Promise<AxiosResponse> =>
+    api.post('/auth/send-otp', { email }),
 
-  verifyOTP: (data: { phoneNumber: string; otp: string }): Promise<AxiosResponse> =>
-    api.post('/driver/verify-otp', data),
+  verifyOTP: (data: { email: string; otp: string }): Promise<AxiosResponse> =>
+    api.post('/auth/verify-otp', data),
 
   refreshToken: (): Promise<AxiosResponse> =>
-    api.post('/driver/refresh-token'),
+    api.post('/auth/refresh-token'),
 
   // Profile
   getProfile: (driverId: string): Promise<AxiosResponse> =>
@@ -132,6 +132,86 @@ export const driverAPI = {
   // Location updates
   updateLocation: (driverId: string, location: { latitude: number; longitude: number; address?: string }): Promise<AxiosResponse> =>
     api.post(`/driver/${driverId}/location`, location),
+};
+
+// Ride Offer API endpoints
+export const rideOfferAPI = {
+  /**
+   * Create a new ride offer
+   */
+  createRideOffer: (rideOfferData: any): Promise<AxiosResponse> =>
+    api.post('/ride-offers', rideOfferData),
+
+  /**
+   * Get driver's ride offers
+   */
+  getRideOffers: (page = 1, limit = 20): Promise<AxiosResponse> =>
+    api.get('/ride-offers', { params: { page, limit } }),
+
+  /**
+   * Get specific ride offer details
+   */
+  getRideOffer: (offerId: string): Promise<AxiosResponse> =>
+    api.get(`/ride-offers/${offerId}`),
+
+  /**
+   * Update ride offer
+   */
+  updateRideOffer: (offerId: string, updateData: any): Promise<AxiosResponse> =>
+    api.put(`/ride-offers/${offerId}`, updateData),
+
+  /**
+   * Publish ride offer
+   */
+  publishRideOffer: (offerId: string): Promise<AxiosResponse> =>
+    api.patch(`/ride-offers/${offerId}/publish`),
+
+  /**
+   * Cancel ride offer
+   */
+  cancelRideOffer: (offerId: string, reason?: string): Promise<AxiosResponse> =>
+    api.patch(`/ride-offers/${offerId}/cancel`, { reason }),
+
+  /**
+   * Delete ride offer (draft only)
+   */
+  deleteRideOffer: (offerId: string): Promise<AxiosResponse> =>
+    api.delete(`/ride-offers/${offerId}`),
+
+  /**
+   * Search available ride offers (for riders)
+   */
+  searchRideOffers: (searchData: any): Promise<AxiosResponse> =>
+    api.post('/ride-offers/search', searchData),
+
+  /**
+   * Get popular routes
+   */
+  getPopularRoutes: (): Promise<AxiosResponse> =>
+    api.get('/ride-offers/popular/routes'),
+};
+
+// Places API (for address search)
+export const placesAPI = {
+  /**
+   * Search places using Google Places API
+   */
+  searchPlaces: (query: string, location?: { lat: number; lng: number }): Promise<AxiosResponse> =>
+    api.get('/places/search', {
+      params: { query, lat: location?.lat, lng: location?.lng }
+    }),
+
+  /**
+   * Get place details
+   */
+  getPlaceDetails: (placeId: string): Promise<AxiosResponse> =>
+    api.get(`/places/details/${placeId}`),
+
+  /**
+   * Reverse geocode coordinates to address
+   */
+  reverseGeocode: (lat: number, lng: number): Promise<AxiosResponse> =>
+    api.get('/places/reverse-geocode', { params: { lat, lng } }),
 };
 
 // Ride API endpoints (shared with rider app)

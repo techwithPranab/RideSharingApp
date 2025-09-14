@@ -47,7 +47,10 @@ export const getDrivers = asyncHandler(async (req: Request, res: Response) => {
   // Get drivers with populated vehicle data
   const drivers = await User.find(query)
     .select('-password')
-    .populate('vehicleId')
+    .populate({
+      path: 'vehicleIds',
+      options: { lean: true }
+    })
     .sort({ [sortBy as string]: sortOrder === 'desc' ? -1 : 1 })
     .skip(skip)
     .limit(limitNum)
@@ -57,12 +60,13 @@ export const getDrivers = asyncHandler(async (req: Request, res: Response) => {
   const totalDrivers = await User.countDocuments(query);
   const totalPages = Math.ceil(totalDrivers / limitNum);
 
-  // Add additional stats for each driver
+  // Add additional stats for each driver and handle null vehicleIds
   const driversWithStats = await Promise.all(
     drivers.map(async (driver) => {
       const driverStats = await getDriverStats(driver._id.toString());
       return {
         ...driver,
+        vehicleIds: driver.vehicleIds || [],
         ...driverStats
       };
     })
@@ -91,7 +95,10 @@ export const getDriverById = asyncHandler(async (req: Request, res: Response): P
 
   const driver = await User.findOne({ _id: id, role: UserRole.DRIVER })
     .select('-password')
-    .populate('vehicleId');
+    .populate({
+      path: 'vehicleIds',
+      options: { lean: true }
+    });
 
   if (!driver) {
     res.status(404).json({
@@ -109,6 +116,7 @@ export const getDriverById = asyncHandler(async (req: Request, res: Response): P
     data: {
       driver: {
         ...driver.toObject(),
+        vehicleIds: driver.vehicleIds || [],
         ...driverStats
       }
     }
@@ -226,10 +234,19 @@ export const getPendingDrivers = asyncHandler(async (req: Request, res: Response
     status: UserStatus.PENDING_VERIFICATION
   })
   .select('-password')
-  .populate('vehicleId')
+  .populate({
+    path: 'vehicleIds',
+    options: { lean: true }
+  })
   .sort({ createdAt: -1 })
   .skip(skip)
   .limit(limitNum);
+
+  // Transform pending drivers to handle null vehicleIds
+  const transformedPendingDrivers = pendingDrivers.map(driver => ({
+    ...driver.toObject(),
+    vehicleIds: driver.vehicleIds || []
+  }));
 
   const totalPending = await User.countDocuments({
     role: UserRole.DRIVER,
@@ -239,7 +256,7 @@ export const getPendingDrivers = asyncHandler(async (req: Request, res: Response
   res.status(200).json({
     success: true,
     data: {
-      drivers: pendingDrivers,
+      drivers: transformedPendingDrivers,
       pagination: {
         currentPage: pageNum,
         totalPages: Math.ceil(totalPending / limitNum),

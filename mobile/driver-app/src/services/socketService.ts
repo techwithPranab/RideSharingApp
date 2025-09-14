@@ -5,7 +5,7 @@
 
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '../constants/config';
+import { SOCKET_URL } from '../constants/config';
 
 class SocketService {
   private socket: Socket | null = null;
@@ -24,7 +24,7 @@ class SocketService {
         throw new Error('No authentication token found');
       }
 
-      this.socket = io(API_BASE_URL, {
+      this.socket = io(SOCKET_URL, {
         auth: {
           token,
         },
