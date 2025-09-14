@@ -13,11 +13,11 @@ const router = Router();
 router.use(protect);
 
 /**
- * @route POST /api/rides
+ * @route POST /api/rides/request
  * @desc Create a new ride request
  * @access Private (Riders only)
  */
-router.post('/', RideController.createRide);
+router.post('/request', RideController.createRide);
 
 /**
  * @route POST /api/rides/fare-estimate
@@ -25,6 +25,20 @@ router.post('/', RideController.createRide);
  * @access Private (Riders only)
  */
 router.post('/fare-estimate', RideController.getFareEstimate);
+
+/**
+ * @route GET /api/rides/active
+ * @desc Get active ride for user
+ * @access Private
+ */
+router.get('/active', RideController.getActiveRide);
+
+/**
+ * @route GET /api/rides/history
+ * @desc Get user's ride history
+ * @access Private
+ */
+router.get('/history', RideController.getRideHistory);
 
 /**
  * @route GET /api/rides/:rideId
@@ -46,20 +60,6 @@ router.patch('/:rideId/status', RideController.updateRideStatus);
  * @access Private (Authorized users only)
  */
 router.patch('/:rideId/cancel', RideController.cancelRide);
-
-/**
- * @route GET /api/rides/history
- * @desc Get user's ride history
- * @access Private
- */
-router.get('/history', RideController.getRideHistory);
-
-/**
- * @route GET /api/rides/active
- * @desc Get active ride for user
- * @access Private
- */
-router.get('/active', RideController.getActiveRide);
 
 /**
  * @route POST /api/rides/:rideId/rate

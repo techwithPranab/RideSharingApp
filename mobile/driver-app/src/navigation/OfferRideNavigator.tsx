@@ -15,6 +15,7 @@ import SetPricingScreen from '../screens/offer-ride/SetPricingScreen';
 import ReviewOfferScreen from '../screens/offer-ride/ReviewOfferScreen';
 import MyOffersScreen from '../screens/offer-ride/MyOffersScreen';
 import OfferDetailsScreen from '../screens/offer-ride/OfferDetailsScreen';
+import CancelRideOfferScreen from '../screens/rides/CancelRideOfferScreen';
 
 // Import types
 import { OfferRideStackParamList } from './types';
@@ -79,6 +80,11 @@ const OfferRideNavigator: React.FC = () => {
         name="OfferDetails" 
         component={OfferDetailsScreen}
         options={{ title: 'Offer Details' }}
+      />
+      <Stack.Screen 
+        name="CancelRideOffer" 
+        component={CancelRideOfferScreen}
+        options={{ title: 'Cancel Offer' }}
       />
     </Stack.Navigator>
   );

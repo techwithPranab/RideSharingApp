@@ -8,13 +8,11 @@ import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
-import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { store, persistor } from './src/store';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoadingScreen from './src/screens/LoadingScreen';
-import { useAppSelector } from './src/hooks/redux';
 
 // Keep splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -25,18 +23,17 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Load custom fonts
-        await Font.loadAsync({
-          'Inter-Regular': require('./assets/fonts/Inter-Regular.ttf'),
-          'Inter-Medium': require('./assets/fonts/Inter-Medium.ttf'),
-          'Inter-Bold': require('./assets/fonts/Inter-Bold.ttf'),
-        });
+        // Skip font loading for now - use system fonts
+        // await Font.loadAsync({
+        //   'Inter-Regular': require('./assets/fonts/Inter-Regular.ttf'),
+        //   'Inter-Medium': require('./assets/fonts/Inter-Medium.ttf'),
+        //   'Inter-Bold': require('./assets/fonts/Inter-Bold.ttf'),
+        // });
 
         // Setup push notifications (placeholder - implement later)
         // await setupNotifications();
 
-        // Artificially delay for 2 seconds to simulate a slow loading experience
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log('App initialization completed');
       } catch (e) {
         console.warn('Error during app initialization:', e);
       } finally {
@@ -73,11 +70,5 @@ export default function App() {
  * App Content Component with Redux state access
  */
 const AppContent: React.FC = () => {
-  const { isLoading } = useAppSelector((state: any) => state.app);
-
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
-
   return <AppNavigator />;
 };

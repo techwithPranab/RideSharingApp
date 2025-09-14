@@ -7,6 +7,7 @@ import { Request, Response } from 'express';
 import { PaymentService, PaymentRequest } from '../services/paymentService';
 import { Payment, PaymentMethod } from '../models/Payment';
 import { Ride, RideStatus } from '../models/Ride';
+import Booking from '../models/Booking';
 import { ApiResponse } from '../utils/apiResponse';
 import { asyncHandler } from '../middleware/asyncHandler';
 
@@ -343,9 +344,168 @@ export class PaymentController {
   });
 
   /**
-   * Create payment for split fare (pooled rides)
-   * POST /api/payments/split
+   * Create Stripe payment intent for booking
+   * POST /api/payments/create-stripe-intent
    */
+  static readonly createStripePaymentIntent = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      ApiResponse.error(res, 'User not authenticated', 401);
+      return;
+    }
+
+    const { bookingId } = req.body;
+
+    if (!bookingId) {
+      ApiResponse.error(res, 'Booking ID is required', 400);
+      return;
+    }
+
+    try {
+      // Find booking
+      const booking = await Booking.findById(bookingId).populate('riderId');
+      if (!booking) {
+        ApiResponse.error(res, 'Booking not found', 404);
+        return;
+      }
+
+      // Verify user owns the booking
+      if (booking.riderId.toString() !== userId) {
+        ApiResponse.error(res, 'Unauthorized to make payment for this booking', 403);
+        return;
+      }
+
+      if (booking.status !== 'confirmed') {
+        ApiResponse.error(res, 'Booking must be confirmed before payment', 400);
+        return;
+      }
+
+      // Create Stripe payment intent
+      const { payment, clientSecret, paymentIntentId } = await PaymentService.processRidePaymentWithStripe(
+        booking.rideOfferId.toString(),
+        userId,
+        booking.totalAmount,
+        'INR'
+      );
+
+      ApiResponse.success(res, {
+        message: 'Stripe payment intent created successfully',
+        data: {
+          paymentId: payment.paymentId,
+          clientSecret,
+          paymentIntentId,
+          amount: payment.amount,
+          currency: payment.currency,
+          publishableKey: process.env.STRIPE_PUBLISHABLE_KEY
+        }
+      });
+    } catch (error) {
+      console.error('Error creating Stripe payment intent:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create Stripe payment intent';
+      ApiResponse.error(res, errorMessage, 500);
+    }
+  });
+
+  /**
+   * Process refund with Stripe
+   * POST /api/payments/:paymentId/stripe-refund
+   */
+  static readonly processStripeRefund = asyncHandler(async (req: Request, res: Response) => {
+    const { paymentId } = req.params;
+    const { refundAmount, reason } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      ApiResponse.error(res, 'User not authenticated', 401);
+      return;
+    }
+
+    try {
+      // Find the payment
+      const payment = await Payment.findOne({ paymentId });
+
+      if (!payment) {
+        ApiResponse.error(res, 'Payment not found', 404);
+        return;
+      }
+
+      // Check authorization
+      if (payment.payerId.toString() !== userId) {
+        ApiResponse.error(res, 'Unauthorized to process refund', 403);
+        return;
+      }
+
+      if (payment.status !== 'completed') {
+        ApiResponse.error(res, 'Payment cannot be refunded', 400);
+        return;
+      }
+
+      // Process Stripe refund
+      const { refund, stripeRefund } = await PaymentService.processStripeRefund(
+        paymentId,
+        refundAmount,
+        reason
+      );
+
+      ApiResponse.success(res, {
+        message: 'Stripe refund processed successfully',
+        data: {
+          refund: {
+            paymentId: refund.paymentId,
+            amount: refund.amount,
+            status: refund.status,
+            stripeRefundId: stripeRefund.id
+          },
+          originalPayment: {
+            paymentId: payment.paymentId,
+            amount: payment.amount
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error processing Stripe refund:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process Stripe refund';
+      ApiResponse.error(res, errorMessage, 500);
+    }
+  });
+
+  /**
+   * Handle Stripe webhook
+   * POST /api/payments/stripe-webhook
+   */
+  static readonly handleStripeWebhook = async (req: Request, res: Response) => {
+    try {
+      const sig = req.headers['stripe-signature'] as string;
+      const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+      if (!endpointSecret) {
+        console.error('Stripe webhook secret not configured');
+        return res.status(500).json({ error: 'Webhook secret not configured' });
+      }
+
+      let event: any;
+
+      try {
+        // Verify webhook signature
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+      } catch (err: any) {
+        console.error('Stripe webhook signature verification failed:', err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+      }
+
+      // Handle webhook
+      await PaymentService.handleStripeWebhook(event);
+
+      // Return 200 to acknowledge receipt
+      return res.status(200).json({ received: true });
+    } catch (error) {
+      console.error('Error handling Stripe webhook:', error);
+      // Return 200 to prevent Stripe from retrying
+      return res.status(200).json({ status: 'error', message: 'Webhook processing failed' });
+    }
+  };
   static readonly createSplitPayment = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.id;
 

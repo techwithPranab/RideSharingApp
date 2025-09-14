@@ -12,7 +12,7 @@ import {
   Text,
   Alert,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from './MockMapView';
 import { APP_CONFIG, COLORS } from '../constants/config';
 import * as Location from 'expo-location';
 
@@ -40,7 +40,7 @@ interface MapProps {
   style?: any;
   initialRegion?: MapLocation;
   markers?: MapMarker[];
-  routeCoordinates?: Array<{ latitude: number; longitude: number }>;
+  routeCoordinates?: { latitude: number; longitude: number }[];
   onLocationSelect?: (location: MapLocation) => void;
   onMarkerPress?: (marker: MapMarker) => void;
   showUserLocation?: boolean;
@@ -73,7 +73,7 @@ const MapComponent: React.FC<MapProps> = ({
   showsTraffic = false,
   showsIndoors = false,
 }) => {
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<typeof MapView>(null);
   const [currentLocation, setCurrentLocation] = useState<MapLocation | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
   const [locationPermission, setLocationPermission] = useState<boolean>(false);
@@ -117,8 +117,8 @@ const MapComponent: React.FC<MapProps> = ({
       setCurrentLocation(currentLoc);
 
       // If no initial region provided, use current location
-      if (!initialRegion && mapRef.current) {
-        mapRef.current.animateToRegion(currentLoc, 1000);
+      if (mapRef.current) {
+        console.log('Would animate to region:', currentLoc);
       }
     } catch (error) {
       console.error('Error getting current location:', error);
@@ -150,7 +150,7 @@ const MapComponent: React.FC<MapProps> = ({
 
   const centerOnUserLocation = () => {
     if (currentLocation && mapRef.current) {
-      mapRef.current.animateToRegion(currentLocation, 1000);
+      console.log('Would animate to region:', currentLocation);
     }
   };
 

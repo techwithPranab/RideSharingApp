@@ -3,7 +3,7 @@
  * Functions for handling location data, distance calculations, etc.
  */
 
-import { PermissionsAndroid, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import * as Location from 'expo-location';
 
 export interface LocationData {
@@ -22,30 +22,36 @@ export interface Address {
   formattedAddress?: string;
 }
 
+// Web-compatible location utilities
 export const locationUtils = {
   /**
    * Request location permissions
    */
   requestPermissions: async (): Promise<boolean> => {
+    if (Platform.OS === 'web') {
+      // Web permissions are handled by the browser
+      try {
+        if ('geolocation' in navigator) {
+          // Check if geolocation is supported
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.warn('Web geolocation not available:', error);
+        return false;
+      }
+    }
+
     if (Platform.OS === 'ios') {
       // iOS permissions are handled automatically by the system
       return true;
     }
 
+    // For Android, use Expo Location permissions
     try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Location Permission',
-          message: 'This app needs access to your location to provide ride services.',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
-      );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      return status === 'granted';
     } catch (err) {
-      // Location permission error handled silently
       console.warn('Location permission error:', err);
       return false;
     }

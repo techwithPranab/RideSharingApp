@@ -43,6 +43,7 @@
     "nodemailer": "^7.0.6",
     "razorpay": "^2.9.2",
     "socket.io": "^4.7.2",
+    "stripe": "^18.5.0",
     "twilio": "^4.15.0",
     "winston": "^3.10.0"
   },

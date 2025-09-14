@@ -18,6 +18,7 @@ import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 import socketHandler from './services/socketService';
+import { getRideTrackingService } from './services/rideTrackingService';
 import { emailService } from './services/emailService';
 
 // Import routes
@@ -29,6 +30,9 @@ import adminRoutes from './routes/adminRoutes';
 import driverRoutes from './routes/driverRoutes';
 import rideOfferRoutes from './routes/rideOfferRoutes';
 import placesRoutes from './routes/placesRoutes';
+import bookingRoutes from './routes/bookingRoutes';
+import rideTrackingRoutes from './routes/rideTrackingRoutes';
+import fareCalculationRoutes from './routes/fareCalculationRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -135,10 +139,16 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/ride-offers', rideOfferRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/rides', rideTrackingRoutes);
+app.use('/api/fares', fareCalculationRoutes);
 app.use('/api/places', placesRoutes);
 
 // Socket.IO connection handling
 socketHandler(io);
+
+// Initialize ride tracking service
+getRideTrackingService(io);
 
 // Error handling middleware
 app.use(notFound);

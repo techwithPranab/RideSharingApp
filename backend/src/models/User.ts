@@ -69,6 +69,10 @@ export interface IUser extends Document<any, any, any> {
   
   // Authentication
   password?: string;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
+  emailVerificationToken?: string;
+  emailVerificationExpires?: Date;
   role: UserRole;
   status: UserStatus;
   isPhoneVerified: boolean;
@@ -234,6 +238,22 @@ const UserSchema = new Schema<IUser>({
     type: String,
     minlength: 6,
     select: false // Don't include in queries by default
+  },
+  passwordResetToken: {
+    type: String,
+    select: false
+  },
+  passwordResetExpires: {
+    type: Date,
+    select: false
+  },
+  emailVerificationToken: {
+    type: String,
+    select: false
+  },
+  emailVerificationExpires: {
+    type: Date,
+    select: false
   },
   role: {
     type: String,

@@ -32,6 +32,10 @@ const registerValidation = [
     .optional()
     .matches(/^\+91[6-9]\d{9}$/)
     .withMessage('Please provide a valid Indian phone number'),
+  body('password')
+    .optional()
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long'),
   body('referralCode')
     .optional()
     .isLength({ min: 6, max: 8 })
@@ -63,6 +67,41 @@ const otpValidation = [
     .withMessage('OTP must be a 6-digit number')
 ];
 
+const passwordValidation = [
+  body('newPassword')
+    .isLength({ min: 6 })
+    .withMessage('New password must be at least 6 characters long'),
+  body('confirmPassword')
+    .custom((value, { req }) => {
+      if (value !== req.body.newPassword) {
+        throw new Error('Password confirmation does not match password');
+      }
+      return true;
+    })
+];
+
+const passwordResetValidation = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+];
+
+const resetPasswordValidation = [
+  body('token')
+    .notEmpty()
+    .withMessage('Reset token is required'),
+  body('newPassword')
+    .isLength({ min: 6 })
+    .withMessage('New password must be at least 6 characters long'),
+  body('confirmPassword')
+    .custom((value, { req }) => {
+      if (value !== req.body.newPassword) {
+        throw new Error('Password confirmation does not match password');
+      }
+      return true;
+    })
+];
+
 // Public routes
 router.post('/register', registerValidation, authController.register);
 router.post('/login', loginValidation, authController.login);
@@ -70,12 +109,19 @@ router.post('/admin/login', adminLoginValidation, authController.adminLogin);
 router.post('/send-otp', loginValidation, authController.sendLoginOTP);
 router.post('/verify-otp', otpValidation, authController.verifyEmailOTP);
 
+// Password reset routes (public)
+router.post('/request-password-reset', passwordResetValidation, authController.requestPasswordReset);
+router.post('/reset-password', resetPasswordValidation, authController.resetPassword);
+
 // Protected routes
 router.use(protect); // All routes below this middleware require authentication
 
 router.get('/me', authController.getMe);
 router.post('/logout', authController.logout);
 router.post('/refresh-token', authController.refreshToken);
+
+// Password management (protected)
+router.post('/set-password', passwordValidation, authController.setPassword);
 
 // Email verification routes
 router.post('/send-email-verification', authController.sendEmailVerification);

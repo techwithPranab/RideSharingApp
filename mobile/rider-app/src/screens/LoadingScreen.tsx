@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.md,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    fontFamily: 'Inter-Regular',
+    // fontFamily: 'Inter-Regular', // Commented out for now
   },
 });
 

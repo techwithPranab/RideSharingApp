@@ -34,11 +34,22 @@ const PaymentMethodsScreen: React.FC = () => {
       const paymentMethods = response.data.data || [];
       setMethods(paymentMethods);
     } catch (error) {
-      // Error loading payment methods handled with alert
+      console.warn('Error loading payment methods:', error);
       Alert.alert('Error', 'Failed to load payment methods');
       setMethods([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const deletePaymentMethod = async (methodId: string) => {
+    try {
+      await paymentAPI.deletePaymentMethod(methodId);
+      setMethods(prev => prev.filter(method => method.id !== methodId));
+      Alert.alert('Success', 'Payment method deleted successfully');
+    } catch (error) {
+      console.warn('Error deleting payment method:', error);
+      Alert.alert('Error', 'Failed to delete payment method');
     }
   };
 
@@ -51,37 +62,40 @@ const PaymentMethodsScreen: React.FC = () => {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await paymentAPI.deletePaymentMethod(methodId);
-              setMethods(prev => prev.filter(method => method.id !== methodId));
-              Alert.alert('Success', 'Payment method deleted successfully');
-            } catch (error) {
-              // Error deleting payment method handled with alert
-              Alert.alert('Error', 'Failed to delete payment method');
-            }
-          },
+          onPress: () => void deletePaymentMethod(methodId),
         },
       ]
     );
   };
 
-  const handleSetDefault = async (methodId: string) => {
+    const setDefaultPaymentMethod = async (methodId: string) => {
     try {
       await paymentAPI.setDefaultPaymentMethod(methodId);
-      // Update the local state to reflect the change
-      setMethods(prev => prev.map(method => ({
-        ...method,
-        isDefault: method.id === methodId
-      })));
-      Alert.alert('Success', 'Default payment method updated successfully');
-    } catch (error: unknown) {
-      // Error setting default payment method handled with alert
-      const message = error instanceof Error && typeof error === 'object' && error !== null && 'response' in error
-        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to set default payment method'
-        : 'Failed to set default payment method';
-      Alert.alert('Error', message);
+      await loadPaymentMethods();
+      Alert.alert('Success', 'Default payment method updated');
+    } catch (error) {
+      console.warn('Error setting default payment method:', error);
+      Alert.alert('Error', 'Failed to update default payment method');
     }
+  };
+
+  const showPaymentMethodOptions = (method: PaymentMethod) => {
+    Alert.alert(
+      'Payment Method Options',
+      '',
+      [
+        {
+          text: method.isDefault ? 'Already Default' : 'Set as Default',
+          onPress: method.isDefault ? undefined : () => void setDefaultPaymentMethod(method.id),
+        },
+        {
+          text: 'Delete',
+          onPress: () => handleDeleteMethod(method.id),
+          style: 'destructive',
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
   };
 
   const getPaymentMethodIcon = (type: string) => {
@@ -164,24 +178,7 @@ const PaymentMethodsScreen: React.FC = () => {
 
               <TouchableOpacity
                 style={styles.moreButton}
-                onPress={() => {
-                  Alert.alert(
-                    'Payment Method Options',
-                    '',
-                    [
-                      {
-                        text: method.isDefault ? 'Already Default' : 'Set as Default',
-                        onPress: () => !method.isDefault && handleSetDefault(method.id),
-                      },
-                      {
-                        text: 'Delete',
-                        onPress: () => handleDeleteMethod(method.id),
-                        style: 'destructive',
-                      },
-                      { text: 'Cancel', style: 'cancel' },
-                    ]
-                  );
-                }}
+                onPress={() => showPaymentMethodOptions(method)}
               >
                 <Text style={styles.moreButtonText}>⋯</Text>
               </TouchableOpacity>

@@ -40,6 +40,7 @@ export const registerUser = createAsyncThunk(
     lastName: string;
     role: 'rider' | 'driver';
     email?: string;
+    password?: string;
     referralCode?: string;
   }, { rejectWithValue }) => {
     try {
@@ -53,16 +54,16 @@ export const registerUser = createAsyncThunk(
 );
 
 /**
- * Login with phone and OTP
+ * Login with email and password
  */
-export const loginUser = createAsyncThunk(
-  'auth/login',
+export const loginWithEmail = createAsyncThunk(
+  'auth/loginWithEmail',
   async (credentials: {
-    phoneNumber: string;
-    otp: string;
+    email: string;
+    password: string;
   }, { rejectWithValue }) => {
     try {
-      const response = await authAPI.login(credentials);
+      const response = await authAPI.loginWithEmail(credentials);
       const data = response.data?.data;
       if (!data || !data.user || !data.token) {
         throw new Error('Invalid response data');
@@ -74,7 +75,37 @@ export const loginUser = createAsyncThunk(
 
       return { user, token };
     } catch (error: unknown) {
-      const message = error instanceof Error && 'response' in error 
+      const message = error instanceof Error && 'response' in error
+        ? (error as any).response?.data?.error?.message || 'Login failed'
+        : 'Login failed';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+/**
+ * Login with email and OTP
+ */
+export const loginWithEmailOTP = createAsyncThunk(
+  'auth/loginWithEmailOTP',
+  async (credentials: {
+    email: string;
+    otp: string;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.loginWithEmailOTP(credentials);
+      const data = response.data?.data;
+      if (!data || !data.user || !data.token) {
+        throw new Error('Invalid response data');
+      }
+      const { user, token } = data;
+
+      // Store token in AsyncStorage
+      await AsyncStorage.setItem('token', token);
+
+      return { user, token };
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error
         ? (error as any).response?.data?.error?.message || 'Login failed'
         : 'Login failed';
       return rejectWithValue(message);
@@ -92,9 +123,27 @@ export const sendOTP = createAsyncThunk(
       const response = await authAPI.sendOTP(phoneNumber);
       return response.data.message;
     } catch (error: unknown) {
-      const message = error instanceof Error && 'response' in error 
+      const message = error instanceof Error && 'response' in error
         ? (error as any).response?.data?.error?.message || 'Failed to send OTP'
         : 'Failed to send OTP';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+/**
+ * Send email OTP for login
+ */
+export const sendEmailOTP = createAsyncThunk(
+  'auth/sendEmailOTP',
+  async (email: string, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.sendEmailOTP(email);
+      return response.data.message;
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error
+        ? (error as any).response?.data?.error?.message || 'Failed to send email OTP'
+        : 'Failed to send email OTP';
       return rejectWithValue(message);
     }
   }
@@ -122,9 +171,39 @@ export const verifyPhone = createAsyncThunk(
 
       return { user, token };
     } catch (error: unknown) {
-      const message = error instanceof Error && 'response' in error 
+      const message = error instanceof Error && 'response' in error
         ? (error as any).response?.data?.error?.message || 'Phone verification failed'
         : 'Phone verification failed';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+/**
+ * Verify email with OTP
+ */
+export const verifyEmail = createAsyncThunk(
+  'auth/verifyEmail',
+  async (data: {
+    email: string;
+    otp: string;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.verifyEmail(data);
+      const responseData = response.data?.data;
+      if (!responseData || !responseData.user || !responseData.token) {
+        throw new Error('Invalid response data');
+      }
+      const { user, token } = responseData;
+
+      // Store token in AsyncStorage
+      await AsyncStorage.setItem('token', token);
+
+      return { user, token };
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error
+        ? (error as any).response?.data?.error?.message || 'Email verification failed'
+        : 'Email verification failed';
       return rejectWithValue(message);
     }
   }
@@ -144,7 +223,7 @@ export const logoutUser = createAsyncThunk(
     } catch (error: unknown) {
       // Even if API call fails, remove local token
       await AsyncStorage.removeItem('token');
-      const message = error instanceof Error && 'response' in error 
+      const message = error instanceof Error && 'response' in error
         ? (error as any).response?.data?.error?.message || 'Logout failed'
         : 'Logout failed';
       return rejectWithValue(message);
@@ -222,20 +301,38 @@ const authSlice = createSlice({
         state.error = action.payload as string;
       });
 
-    // Login user
+    // Login with email and password
     builder
-      .addCase(loginUser.pending, (state) => {
+      .addCase(loginWithEmail.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(loginUser.fulfilled, (state, action) => {
+      .addCase(loginWithEmail.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
         state.token = action.payload.token;
         state.user = action.payload.user;
         state.error = null;
       })
-      .addCase(loginUser.rejected, (state, action) => {
+      .addCase(loginWithEmail.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Login with email and OTP
+    builder
+      .addCase(loginWithEmailOTP.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(loginWithEmailOTP.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.token = action.payload.token;
+        state.user = action.payload.user;
+        state.error = null;
+      })
+      .addCase(loginWithEmailOTP.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });
@@ -255,6 +352,21 @@ const authSlice = createSlice({
         state.error = action.payload as string;
       });
 
+    // Send email OTP
+    builder
+      .addCase(sendEmailOTP.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(sendEmailOTP.fulfilled, (state) => {
+        state.isLoading = false;
+        state.error = null;
+      })
+      .addCase(sendEmailOTP.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
     // Verify phone
     builder
       .addCase(verifyPhone.pending, (state) => {
@@ -269,6 +381,24 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(verifyPhone.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Verify email
+    builder
+      .addCase(verifyEmail.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(verifyEmail.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.token = action.payload.token;
+        state.user = action.payload.user;
+        state.error = null;
+      })
+      .addCase(verifyEmail.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });

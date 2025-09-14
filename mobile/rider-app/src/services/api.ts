@@ -16,7 +16,7 @@ const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
+console.log('API Base URL:', API_BASE_URL);
 // Request interceptor to add auth token
 api.interceptors.request.use(
   async (config) => {
@@ -61,16 +61,40 @@ export const authAPI = {
     api.post('/auth/login', credentials),
 
   /**
+   * Login with email and password
+   */
+  loginWithEmail: (credentials: { email: string; password: string }): Promise<AxiosResponse<APIResponse<{ user: User; token: string }>>> =>
+    api.post('/auth/login', credentials),
+
+  /**
+   * Login with email and OTP
+   */
+  loginWithEmailOTP: (credentials: { email: string; otp: string }): Promise<AxiosResponse<APIResponse<{ user: User; token: string }>>> =>
+    api.post('/auth/login', credentials),
+
+  /**
    * Send OTP to phone number
    */
   sendOTP: (phoneNumber: string): Promise<AxiosResponse<APIResponse<string>>> =>
     api.post('/auth/send-otp', { phoneNumber }),
 
   /**
+   * Send OTP to email
+   */
+  sendEmailOTP: (email: string): Promise<AxiosResponse<APIResponse<string>>> =>
+    api.post('/auth/send-login-otp', { email }),
+
+  /**
    * Verify phone number with OTP
    */
   verifyPhone: (data: { phoneNumber: string; otp: string }): Promise<AxiosResponse<APIResponse<{ user: User; token: string }>>> =>
     api.post('/auth/verify-phone', data),
+
+  /**
+   * Verify email with OTP
+   */
+  verifyEmail: (data: { email: string; otp: string }): Promise<AxiosResponse<APIResponse<{ user: User; token: string }>>> =>
+    api.post('/auth/verify-email-otp', data),
 
   /**
    * Get user profile
@@ -131,6 +155,37 @@ export const rideAPI = {
    */
   requestRide: (rideData: RideRequest): Promise<AxiosResponse<APIResponse<Ride>>> =>
     api.post('/rides/request', rideData),
+
+  /**
+   * Search for available ride offers
+   */
+  searchRideOffers: (searchData: {
+    source?: {
+      latitude: number;
+      longitude: number;
+      radius?: number;
+    };
+    destination?: {
+      latitude: number;
+      longitude: number;
+      radius?: number;
+    };
+    departureDate?: string;
+    departureTimeRange?: {
+      start: string;
+      end: string;
+    };
+    maxPrice?: number;
+    minSeats?: number;
+    vehicleType?: string;
+  }): Promise<AxiosResponse<APIResponse<any[]>>> =>
+    api.post('/ride-offers/search', searchData),
+
+  /**
+   * Book seats in a ride offer
+   */
+  bookRideOffer: (offerId: string, seatsCount: number): Promise<AxiosResponse<APIResponse<any>>> =>
+    api.post(`/ride-offers/${offerId}/book`, { seatsCount }),
 
   /**
    * Get ride by ID

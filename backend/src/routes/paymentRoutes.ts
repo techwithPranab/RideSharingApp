@@ -48,11 +48,25 @@ router.get('/history', PaymentController.getPaymentHistory);
 router.post('/:paymentId/refund', PaymentController.processRefund);
 
 /**
- * @route POST /api/payments/webhook
- * @desc Handle Razorpay webhook
+ * @route POST /api/payments/create-stripe-intent
+ * @desc Create Stripe payment intent for booking
+ * @access Private
+ */
+router.post('/create-stripe-intent', PaymentController.createStripePaymentIntent);
+
+/**
+ * @route POST /api/payments/stripe-webhook
+ * @desc Handle Stripe webhook
  * @access Public (but verified via signature)
  */
-router.post('/webhook', PaymentController.handleWebhook);
+router.post('/stripe-webhook', PaymentController.handleStripeWebhook);
+
+/**
+ * @route POST /api/payments/:paymentId/stripe-refund
+ * @desc Process refund with Stripe
+ * @access Private
+ */
+router.post('/:paymentId/stripe-refund', PaymentController.processStripeRefund);
 
 /**
  * @route GET /api/payments/stats

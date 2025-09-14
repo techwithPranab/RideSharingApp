@@ -235,15 +235,30 @@ export interface ProfileForm {
 export type RootStackParamList = {
   // Auth Stack
   Welcome: undefined;
-  PhoneLogin: undefined;
-  OTPVerification: { phoneNumber: string };
   Register: { phoneNumber: string };
+  EmailLogin: undefined;
+  EmailOTPVerification: { email: string };
 
   // Main App
   MainTabs: undefined;
 
   // Ride Stack
   RideRequest: undefined;
+  RideSearchForm: undefined;
+  RideSearchResults: {
+    searchData: {
+      source: { address: string };
+      destination: { address: string };
+      departureDate: Date;
+      seats: number;
+    };
+    rideOffers: any[];
+  };
+  RideBooking: {
+    rideOffer: any;
+    requestedSeats: number;
+    searchData: any;
+  };
   SearchingDriver: { rideRequest: RideRequest };
   RideTracking: { rideId: string };
   RideCompleted: { rideId: string };
@@ -262,7 +277,11 @@ export type RootStackParamList = {
   SubscriptionManagement: undefined;
 
   // Other
-  PlaceSearch: { onPlaceSelect: (place: Place) => void };
+  PlaceSearch: { 
+    type?: string;
+    onSelect?: (location: any, address: string) => void;
+    onPlaceSelect?: (place: Place) => void;
+  };
 };
 
 export type TabParamList = {

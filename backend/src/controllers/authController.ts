@@ -22,6 +22,7 @@ interface RegisterRequest extends Request {
     role: UserRole;
     phoneNumber?: string;
     referralCode?: string;
+    password?: string;
   };
 }
 
@@ -125,12 +126,14 @@ const verifyOTP = (email: string, inputOTP: string): boolean => {
 export const register = async (req: RegisterRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Check validation errors
+    console.log('Inside register');
+    console.log('Request body:', req.body);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return next(new AppError('Validation failed', 400));
     }
     
-    const { phoneNumber, firstName, lastName, role, email, referralCode } = req.body;
+    const { phoneNumber, firstName, lastName, role, email, referralCode, password } = req.body;
     
     // Validate required fields
     if (!email) {
@@ -156,7 +159,7 @@ export const register = async (req: RegisterRequest, res: Response, next: NextFu
     const newReferralCode = crypto.randomBytes(4).toString('hex').toUpperCase();
     
     // Create user
-    const user = await User.create({
+    const userData: any = {
       phoneNumber: phoneNumber || undefined,
       firstName,
       lastName,
@@ -167,7 +170,14 @@ export const register = async (req: RegisterRequest, res: Response, next: NextFu
       status: UserStatus.PENDING_VERIFICATION,
       isPhoneVerified: false,
       isEmailVerified: false
-    });
+    };
+
+    // Add password if provided
+    if (password) {
+      userData.password = password;
+    }
+
+    const user = await User.create(userData);
     
     // Generate and send OTP
     await generateAndSendOTP(email, `${firstName} ${lastName}`);
@@ -228,14 +238,22 @@ export const login = async (req: LoginRequest, res: Response, next: NextFunction
     
     let isAuthenticated = false;
     
-    // Authentication with password (if provided)
+    // If both password and OTP are provided, try password first, then OTP as fallback
+    // If only one is provided, use that method
     if (password && user.password) {
       isAuthenticated = await user.comparePassword(password);
-    }
-    
-    // Authentication with OTP (if provided)
-    if (otp) {
+      if (!isAuthenticated && otp) {
+        // Password failed, try OTP as fallback
+        isAuthenticated = verifyOTP(email, otp);
+      }
+    } else if (otp) {
+      // Only OTP provided
       isAuthenticated = verifyOTP(email, otp);
+    } else if (password && !user.password) {
+      // User doesn't have password set, can only use OTP
+      return next(new AppError('Please use OTP login or set a password first', 400));
+    } else {
+      return next(new AppError('Please provide either password or OTP', 400));
     }
     
     if (!isAuthenticated) {
@@ -571,6 +589,159 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
   } catch (error) {
     logger.error('Email verification error:', error);
     return next(new AppError('Email verification failed', 500));
+  }
+};
+
+/**
+ * Set or update password for user
+ */
+export const setPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!req.user) {
+      return next(new AppError('User not authenticated', 401));
+    }
+
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!newPassword || !confirmPassword) {
+      return next(new AppError('New password and confirm password are required', 400));
+    }
+
+    if (newPassword !== confirmPassword) {
+      return next(new AppError('New password and confirm password do not match', 400));
+    }
+
+    // If user already has a password, require current password
+    if (req.user.password && !currentPassword) {
+      return next(new AppError('Current password is required to update password', 400));
+    }
+
+    // Verify current password if user has one
+    if (req.user.password && currentPassword) {
+      const isCurrentPasswordValid = await req.user.comparePassword(currentPassword);
+      if (!isCurrentPasswordValid) {
+        return next(new AppError('Current password is incorrect', 400));
+      }
+    }
+
+    // Validate new password strength
+    if (newPassword.length < 6) {
+      return next(new AppError('Password must be at least 6 characters long', 400));
+    }
+
+    // Update password
+    req.user.password = newPassword;
+    await req.user.save();
+
+    logger.info(`Password ${req.user.password ? 'updated' : 'set'} for user: ${req.user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: req.user.password ? 'Password updated successfully' : 'Password set successfully'
+    });
+  } catch (error) {
+    logger.error('Set password error:', error);
+    return next(new AppError('Failed to set password', 500));
+  }
+};
+
+/**
+ * Reset password using email verification
+ */
+export const requestPasswordReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return next(new AppError('Email is required', 400));
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      // For security, don't reveal if email exists or not
+      res.status(200).json({
+        success: true,
+        message: 'If your email is registered, you will receive password reset instructions'
+      });
+      return;
+    }
+
+    // Generate password reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+    // Save reset token to user
+    user.passwordResetToken = resetToken;
+    user.passwordResetExpires = resetTokenExpiry;
+    await user.save();
+
+    // Send password reset email
+    try {
+      await emailService.sendPasswordResetEmail(email, `${user.firstName} ${user.lastName}`, resetToken);
+      logger.info(`Password reset email sent to ${email}`);
+    } catch (emailError) {
+      logger.error('Failed to send password reset email:', emailError);
+      // Clear the reset token if email fails
+      user.passwordResetToken = '';
+      user.passwordResetExpires = new Date(0);
+      await user.save();
+      return next(new AppError('Failed to send password reset email', 500));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset instructions sent to your email'
+    });
+  } catch (error) {
+    logger.error('Request password reset error:', error);
+    return next(new AppError('Failed to process password reset request', 500));
+  }
+};
+
+/**
+ * Reset password with token
+ */
+export const resetPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { token, newPassword, confirmPassword } = req.body;
+
+    if (!token || !newPassword || !confirmPassword) {
+      return next(new AppError('Token, new password, and confirm password are required', 400));
+    }
+
+    if (newPassword !== confirmPassword) {
+      return next(new AppError('New password and confirm password do not match', 400));
+    }
+
+    if (newPassword.length < 6) {
+      return next(new AppError('Password must be at least 6 characters long', 400));
+    }
+
+    // Find user with valid reset token
+    const user = await User.findOne({
+      passwordResetToken: token,
+      passwordResetExpires: { $gt: new Date() }
+    });
+
+    if (!user) {
+      return next(new AppError('Invalid or expired password reset token', 400));
+    }
+
+    // Update password and clear reset token
+    user.password = newPassword;
+    user.passwordResetToken = '';
+    user.passwordResetExpires = new Date(0);
+    await user.save();
+
+    logger.info(`Password reset successfully for user: ${user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+  } catch (error) {
+    logger.error('Reset password error:', error);
+    return next(new AppError('Failed to reset password', 500));
   }
 };
 

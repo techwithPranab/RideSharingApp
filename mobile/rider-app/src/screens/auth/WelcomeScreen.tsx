@@ -23,8 +23,16 @@ const { width, height } = Dimensions.get('window');
 const WelcomeScreen: React.FC = () => {
   const navigation = useNavigation<WelcomeScreenNavigationProp>();
 
-  const handleGetStarted = () => {
-    navigation.navigate('PhoneLogin');
+  const handleEmailLogin = () => {
+    navigation.navigate('EmailLogin');
+  };
+
+  const handleEmailOTPLogin = () => {
+    navigation.navigate('EmailOTPVerification', { email: '' });
+  };
+
+  const handleRegister = () => {
+    navigation.navigate('Register', { phoneNumber: '' });
   };
 
   return (
@@ -40,10 +48,10 @@ const WelcomeScreen: React.FC = () => {
         </View>
 
         {/* Illustration */}
-        <View style={styles.illustrationContainer}>
+        {/* <View style={styles.illustrationContainer}>
           <Text style={styles.illustrationEmoji}>🗺️</Text>
           <Text style={styles.illustrationText}>Find rides anywhere</Text>
-        </View>
+        </View> */}
 
         {/* Features */}
         <View style={styles.featuresContainer}>
@@ -63,9 +71,21 @@ const WelcomeScreen: React.FC = () => {
 
         {/* Get Started Button */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.primaryButton} onPress={handleGetStarted}>
-            <Text style={styles.primaryButtonText}>Get Started</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleEmailLogin}>
+            <Text style={styles.primaryButtonText}>Login with Email</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleEmailOTPLogin}>
+            <Text style={styles.secondaryButtonText}>Login with Email OTP</Text>
+          </TouchableOpacity>
+
+          {/* Registration Link */}
+          <View style={styles.registrationContainer}>
+            <Text style={styles.registrationText}>Don't have an account? </Text>
+            <TouchableOpacity onPress={handleRegister}>
+              <Text style={styles.registrationLink}>Sign up</Text>
+            </TouchableOpacity>
+          </View>
 
           <Text style={styles.termsText}>
             By continuing, you agree to our{' '}
@@ -131,7 +151,7 @@ const styles = StyleSheet.create({
   featuresContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 60,
+    marginBottom: 40, // Reduced from 60 to prevent overlap
   },
   feature: {
     alignItems: 'center',
@@ -147,8 +167,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   buttonContainer: {
-    flex: 1,
-    justifyContent: 'flex-end',
+    // Removed flex: 1 to prevent overlap
     paddingBottom: 40,
   },
   primaryButton: {
@@ -156,12 +175,42 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   primaryButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+  },
+  secondaryButton: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 24, // Increased to make room for registration link
+    borderWidth: 1,
+    borderColor: '#e1e1e1',
+  },
+  secondaryButtonText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  registrationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  registrationText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  registrationLink: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   termsText: {
     fontSize: 14,

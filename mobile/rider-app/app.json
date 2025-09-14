@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "rideshare-rider",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -55,19 +56,9 @@
           "icon": "./assets/notification-icon.png",
           "color": "#ffffff"
         }
-      ],
-      [
-        "react-native-maps",
-        {
-          "iosApiKey": "YOUR_GOOGLE_MAPS_IOS_API_KEY",
-          "androidApiKey": "YOUR_GOOGLE_MAPS_ANDROID_API_KEY"
-        }
       ]
     ],
     "extra": {
-      "eas": {
-        "projectId": "rideshare-rider-project-id"
-      }
     }
   }
 }

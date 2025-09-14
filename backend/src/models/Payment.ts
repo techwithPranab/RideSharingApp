@@ -54,6 +54,11 @@ export interface IPayment extends Document<any, any, any> {
   gatewayOrderId?: string;
   gatewaySignature?: string;
   
+  // Stripe specific fields
+  stripePaymentIntentId?: string;
+  stripeClientSecret?: string;
+  stripeRefundId?: string;
+  
   // Status and timing
   status: PaymentStatus;
   initiatedAt: Date;
@@ -146,6 +151,22 @@ const PaymentSchema = new Schema<IPayment>({
     index: true
   },
   gatewaySignature: String,
+  
+  // Stripe specific fields
+  stripePaymentIntentId: {
+    type: String,
+    sparse: true,
+    index: true
+  },
+  stripeClientSecret: {
+    type: String,
+    sparse: true
+  },
+  stripeRefundId: {
+    type: String,
+    sparse: true,
+    index: true
+  },
   
   // Status and timing
   status: {

@@ -616,7 +616,7 @@ export class RideOfferController {
     }
 
     try {
-      const result = await RideOfferService.bookSeats(offerId, seatsCount);
+      const result = await RideOfferService.bookSeats(offerId, seatsCount, userId);
 
       if (!result.success) {
         ApiResponse.error(res, result.message, 400);
@@ -629,7 +629,7 @@ export class RideOfferController {
         message: result.message,
         booking: {
           seatsCount,
-          totalPrice: seatsCount * (result.rideOffer?.pricing.pricePerSeat || 0)
+          totalPrice: seatsCount * (result.booking?.totalAmount || 0)
         }
       }, 201);
 
@@ -667,16 +667,19 @@ export class RideOfferController {
     }
 
     try {
-      const rideOffer = await RideOfferService.cancelRideOffer(offerId, userId, reason);
+      const result = await RideOfferService.cancelRideOffer(offerId, userId, reason);
 
-      logger.info(`Ride offer ${offerId} cancelled by driver ${userId}`);
+      if (!result.success) {
+        ApiResponse.error(res, result.message, 400);
+        return;
+      }
+
+      logger.info(`Ride offer ${offerId} cancelled by driver ${userId}. ${result.data?.cancelledBookings?.length || 0} bookings affected.`);
 
       ApiResponse.success(res, {
-        message: 'Ride offer cancelled successfully',
-        rideOffer: {
-          id: rideOffer._id,
-          status: rideOffer.status
-        }
+        message: result.message,
+        rideOffer: result.data?.rideOffer,
+        cancelledBookings: result.data?.cancelledBookings
       });
 
     } catch (error) {

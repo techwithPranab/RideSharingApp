@@ -15,9 +15,10 @@ import {
 import { useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 // Import actions
-import { sendOTP, clearError } from '../../store/slices/authSlice';
+import { sendOTP, clearError, login } from '../../store/slices/authSlice';
 
 // Import types
 import { AuthStackParamList } from '../../navigation/types';
@@ -28,6 +29,9 @@ type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'
 
 const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
 
   const dispatch = useAppDispatch();
   const navigation = useNavigation<LoginScreenNavigationProp>();
@@ -38,7 +42,28 @@ const LoginScreen: React.FC = () => {
     dispatch(clearError());
   }, [dispatch]);
 
-  const handleSendOTP = async () => {
+  const handlePasswordLogin = async () => {
+    if (!email || !email.includes('@')) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      Alert.alert('Error', 'Please enter a password (minimum 6 characters)');
+      return;
+    }
+
+    try {
+      const result = await dispatch(login({ email, password })).unwrap();
+      console.log('Login successful:', result);
+      // Navigation will be handled by the auth slice/navigation logic
+    } catch (error) {
+      console.log('Login error:', error);
+      Alert.alert('Login Failed', error as string);
+    }
+  };
+
+  const handleOTPLogin = async () => {
     if (!email || !email.includes('@')) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
@@ -47,21 +72,24 @@ const LoginScreen: React.FC = () => {
     try {
       console.log('=== Starting OTP Send Process ===');
       console.log('Email:', email);
-      console.log('Navigation object:', navigation);
       
       const result = await dispatch(sendOTP(email)).unwrap();
       console.log('OTP sent successfully:', result);
       
-      console.log('Attempting to navigate to OTPVerification...');
-      console.log('Navigation params:', { email, isLogin: true });
-      
       // Navigate to OTP verification screen
       navigation.navigate('OTPVerification', { email, isLogin: true });
       
-      console.log('Navigation call completed');
     } catch (error) {
       console.log('OTP send error:', error);
-      Alert.alert('Error 1', error as string);
+      Alert.alert('Error', error as string);
+    }
+  };
+
+  const handleLogin = () => {
+    if (loginMethod === 'password') {
+      handlePasswordLogin();
+    } else {
+      handleOTPLogin();
     }
   };
 
@@ -73,6 +101,11 @@ const LoginScreen: React.FC = () => {
     navigation.navigate('ForgotPassword');
   };
 
+  const toggleLoginMethod = () => {
+    setLoginMethod(loginMethod === 'password' ? 'otp' : 'password');
+    setPassword(''); // Clear password when switching methods
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -81,6 +114,42 @@ const LoginScreen: React.FC = () => {
       </View>
 
       <View style={styles.form}>
+        {/* Login method toggle */}
+        <View style={styles.methodToggle}>
+          <TouchableOpacity
+            style={[
+              styles.methodButton,
+              loginMethod === 'password' && styles.methodButtonActive
+            ]}
+            onPress={() => setLoginMethod('password')}
+          >
+            <Text
+              style={[
+                styles.methodButtonText,
+                loginMethod === 'password' && styles.methodButtonTextActive
+              ]}
+            >
+              Password
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.methodButton,
+              loginMethod === 'otp' && styles.methodButtonActive
+            ]}
+            onPress={() => setLoginMethod('otp')}
+          >
+            <Text
+              style={[
+                styles.methodButtonText,
+                loginMethod === 'otp' && styles.methodButtonTextActive
+              ]}
+            >
+              OTP
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <TextInput
           style={styles.input}
           placeholder="Email Address"
@@ -91,18 +160,54 @@ const LoginScreen: React.FC = () => {
           autoCorrect={false}
         />
 
+        {loginMethod === 'password' && (
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Icon
+                name={showPassword ? 'visibility-off' : 'visibility'}
+                size={24}
+                color="#666"
+              />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {error && <Text style={styles.errorText}>{error}</Text>}
 
-        <TouchableOpacity style={styles.button} onPress={handleSendOTP} disabled={isLoading}>
+        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={isLoading}>
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>Send OTP</Text>
+            <Text style={styles.buttonText}>
+              {loginMethod === 'password' ? 'Sign In' : 'Send OTP'}
+            </Text>
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.linkButton} onPress={handleForgotPassword}>
-          <Text style={styles.linkText}>Forgot Password?</Text>
+        {loginMethod === 'password' && (
+          <TouchableOpacity style={styles.linkButton} onPress={handleForgotPassword}>
+            <Text style={styles.linkText}>Forgot Password?</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity style={styles.linkButton} onPress={toggleLoginMethod}>
+          <Text style={styles.linkText}>
+            {loginMethod === 'password' 
+              ? 'Login with OTP instead' 
+              : 'Login with Password instead'}
+          </Text>
         </TouchableOpacity>
 
         <View style={styles.divider}>
@@ -142,6 +247,30 @@ const styles = StyleSheet.create({
   form: {
     flex: 1,
   },
+  methodToggle: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    padding: 4,
+  },
+  methodButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  methodButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  methodButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  methodButtonTextActive: {
+    color: '#fff',
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -150,6 +279,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 15,
     backgroundColor: '#f9f9f9',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginBottom: 15,
+    backgroundColor: '#f9f9f9',
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 15,
+    fontSize: 16,
+  },
+  eyeIcon: {
+    padding: 15,
   },
   button: {
     backgroundColor: '#007AFF',
@@ -169,7 +315,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: '#007AFF',
-    fontSize: 16,
+    fontSize: 14,
   },
   divider: {
     alignItems: 'center',

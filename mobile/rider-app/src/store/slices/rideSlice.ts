@@ -41,7 +41,7 @@ export const requestRide = createAsyncThunk(
       const response = await rideAPI.requestRide(rideData);
       return response.data.data;
     } catch (error: unknown) {
-      const message = error instanceof Error && 'response' in error 
+      const message = error instanceof Error && 'response' in error
         ? (error as any).response?.data?.error?.message || 'Failed to request ride'
         : 'Failed to request ride';
       return rejectWithValue(message);
@@ -59,7 +59,7 @@ export const getRide = createAsyncThunk(
       const response = await rideAPI.getRide(rideId);
       return response.data.data;
     } catch (error: unknown) {
-      const message = error instanceof Error && 'response' in error 
+      const message = error instanceof Error && 'response' in error
         ? (error as any).response?.data?.error?.message || 'Failed to get ride details'
         : 'Failed to get ride details';
       return rejectWithValue(message);
@@ -77,7 +77,7 @@ export const cancelRide = createAsyncThunk(
       await rideAPI.cancelRide(rideId, reason);
       return rideId;
     } catch (error: unknown) {
-      const message = error instanceof Error && 'response' in error 
+      const message = error instanceof Error && 'response' in error
         ? (error as any).response?.data?.error?.message || 'Failed to cancel ride'
         : 'Failed to cancel ride';
       return rejectWithValue(message);
@@ -95,7 +95,7 @@ export const rateRide = createAsyncThunk(
       await rideAPI.rateRide(rideId, rating, review);
       return { rideId, rating, review };
     } catch (error: unknown) {
-      const message = error instanceof Error && 'response' in error 
+      const message = error instanceof Error && 'response' in error
         ? (error as any).response?.data?.error?.message || 'Failed to rate ride'
         : 'Failed to rate ride';
       return rejectWithValue(message);
@@ -113,7 +113,7 @@ export const getRideHistory = createAsyncThunk(
       const response = await rideAPI.getRideHistory(page, limit);
       return response.data.data;
     } catch (error: unknown) {
-      const message = error instanceof Error && 'response' in error 
+      const message = error instanceof Error && 'response' in error
         ? (error as any).response?.data?.error?.message || 'Failed to get ride history'
         : 'Failed to get ride history';
       return rejectWithValue(message);
@@ -131,7 +131,7 @@ export const getActiveRide = createAsyncThunk(
       const response = await rideAPI.getActiveRide();
       return response.data.data;
     } catch (error: unknown) {
-      const message = error instanceof Error && 'response' in error 
+      const message = error instanceof Error && 'response' in error
         ? (error as any).response?.data?.error?.message || 'Failed to get active ride'
         : 'Failed to get active ride';
       return rejectWithValue(message);
@@ -155,7 +155,7 @@ export const getFareEstimate = createAsyncThunk(
       const response = await rideAPI.getFareEstimate(data);
       return response.data.data;
     } catch (error: unknown) {
-      const message = error instanceof Error && 'response' in error 
+      const message = error instanceof Error && 'response' in error
         ? (error as any).response?.data?.error?.message || 'Failed to get fare estimate'
         : 'Failed to get fare estimate';
       return rejectWithValue(message);

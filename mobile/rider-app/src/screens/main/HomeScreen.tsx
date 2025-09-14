@@ -14,19 +14,38 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useAppSelector } from '../../hooks/redux';
+import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { subscriptionAPI } from '../../services/api';
+import { getActiveRide } from '../../store/slices/rideSlice';
 import { SubscriptionValidation } from '../../types';
+
+const getRideStatusText = (status: string) => {
+  switch (status) {
+    case 'requested':
+      return 'Finding Driver';
+    case 'accepted':
+      return 'Driver Assigned';
+    case 'driver_arrived':
+      return 'Driver Arrived';
+    case 'started':
+      return 'In Progress';
+    default:
+      return 'Active Ride';
+  }
+};
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation();
+  const dispatch = useAppDispatch();
   const { user } = useAppSelector(state => state.auth);
-  const [selectedRideType, setSelectedRideType] = useState<'regular' | 'pooled'>('regular');
+  const { currentRide } = useAppSelector(state => state.ride);
   const [subscriptionValidation, setSubscriptionValidation] = useState<SubscriptionValidation | null>(null);
 
   useEffect(() => {
     checkSubscriptionStatus();
-  }, []);
+    // Get active ride on component mount
+    dispatch(getActiveRide());
+  }, [dispatch]);
 
   const checkSubscriptionStatus = async () => {
     try {
@@ -37,15 +56,20 @@ const HomeScreen: React.FC = () => {
         setSubscriptionValidation(result.data);
       }
     } catch (error) {
-      // Error handled silently - could implement user notification here
+      console.warn('Error checking subscription status:', error);
+      // Handle error silently as subscription is not critical for basic functionality
     }
   };
 
-  const handleRequestRide = () => {
-    (navigation as any).navigate('RideRequest');
-  };
+  const handleSearchRide = () => {
+    if (!user) {
+      Alert.alert('Authentication Required', 'Please log in to search for rides.');
+      return;
+    }
 
-  const handleEmergency = () => {
+    // Navigate to ride search form
+    (navigation as any).navigate('RideSearchForm');
+  };  const handleEmergency = () => {
     Alert.alert(
       'Emergency',
       'Are you in an emergency situation?',
@@ -55,23 +79,6 @@ const HomeScreen: React.FC = () => {
       ]
     );
   };
-
-  const rideTypeOptions = [
-    {
-      id: 'regular',
-      title: 'Regular Ride',
-      description: 'Private ride just for you',
-      price: '₹150-250',
-      icon: '🚗',
-    },
-    {
-      id: 'pooled',
-      title: 'Pooled Ride',
-      description: 'Share ride with others',
-      price: '₹80-150',
-      icon: '🚐',
-    },
-  ];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -126,9 +133,9 @@ const HomeScreen: React.FC = () => {
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.quickActionButton} onPress={handleRequestRide}>
-            <Text style={styles.quickActionIcon}>📍</Text>
-            <Text style={styles.quickActionText}>Set Destination</Text>
+          <TouchableOpacity style={styles.quickActionButton} onPress={handleSearchRide}>
+            <Text style={styles.quickActionIcon}>�</Text>
+            <Text style={styles.quickActionText}>Search Ride</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.quickActionButton}>
@@ -147,41 +154,65 @@ const HomeScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Ride Type Selection */}
-        <View style={styles.rideTypeContainer}>
-          <Text style={styles.sectionTitle}>Choose your ride</Text>
-
-          {rideTypeOptions.map((option) => (
-            <TouchableOpacity
-              key={option.id}
-              style={[
-                styles.rideTypeCard,
-                selectedRideType === option.id && styles.selectedRideTypeCard,
-              ]}
-              onPress={() => setSelectedRideType(option.id as 'regular' | 'pooled')}
+        {/* Upcoming Rides */}
+        <View style={styles.upcomingRidesContainer}>
+          <Text style={styles.sectionTitle}>Upcoming rides</Text>
+          {currentRide && (currentRide.status === 'requested' || currentRide.status === 'accepted' || currentRide.status === 'driver_arrived' || currentRide.status === 'started') ? (
+            <TouchableOpacity 
+              style={styles.upcomingRideCard}
+              onPress={() => (navigation as any).navigate('RideTracking', { rideId: currentRide.id })}
             >
-              <View style={styles.rideTypeLeft}>
-                <Text style={styles.rideTypeIcon}>{option.icon}</Text>
-                <View style={styles.rideTypeInfo}>
-                  <Text style={styles.rideTypeTitle}>{option.title}</Text>
-                  <Text style={styles.rideTypeDescription}>{option.description}</Text>
+              <View style={styles.rideCardHeader}>
+                <View style={styles.rideStatusBadge}>
+                  <Text style={styles.rideStatusText}>
+                    {getRideStatusText(currentRide.status)}
+                  </Text>
+                </View>
+                <Text style={styles.rideFare}>₹{currentRide.totalFare}</Text>
+              </View>
+              
+              <View style={styles.rideLocations}>
+                <View style={styles.locationRow}>
+                  <View style={styles.pickupDot} />
+                  <Text style={styles.locationText} numberOfLines={1}>
+                    {currentRide.passengers[0]?.pickupLocation?.address || 'Pickup location'}
+                  </Text>
+                </View>
+                <View style={styles.locationLine} />
+                <View style={styles.locationRow}>
+                  <View style={styles.dropoffDot} />
+                  <Text style={styles.locationText} numberOfLines={1}>
+                    {currentRide.passengers[0]?.dropoffLocation?.address || 'Dropoff location'}
+                  </Text>
                 </View>
               </View>
-              <View style={styles.rideTypeRight}>
-                <Text style={styles.rideTypePrice}>{option.price}</Text>
-                <View style={[
-                  styles.selectionIndicator,
-                  selectedRideType === option.id && styles.selectedIndicator,
-                ]} />
-              </View>
+
+              {currentRide.driver && (
+                <View style={styles.driverInfo}>
+                  <Text style={styles.driverName}>
+                    {currentRide.driver.firstName} {currentRide.driver.lastName}
+                  </Text>
+                  <Text style={styles.vehicleInfo}>
+                    {currentRide.vehicle?.make} {currentRide.vehicle?.model} • {currentRide.vehicle?.licensePlate}
+                  </Text>
+                </View>
+              )}
+              
+              <Text style={styles.viewRideText}>Tap to view details →</Text>
             </TouchableOpacity>
-          ))}
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateEmoji}>🚗</Text>
+              <Text style={styles.emptyStateText}>No upcoming rides</Text>
+              <Text style={styles.emptyStateSubtext}>Request a ride to get started</Text>
+            </View>
+          )}
         </View>
 
-        {/* Request Ride Button */}
+        {/* Search Ride Button */}
         <View style={styles.requestButtonContainer}>
-          <TouchableOpacity style={styles.requestButton} onPress={handleRequestRide}>
-            <Text style={styles.requestButtonText}>Request Ride</Text>
+          <TouchableOpacity style={styles.requestButton} onPress={handleSearchRide}>
+            <Text style={styles.requestButtonText}>Search Rides Now</Text>
           </TouchableOpacity>
         </View>
 
@@ -355,6 +386,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
+  upcomingRidesContainer: {
+    marginBottom: 32,
+  },
   recentRidesContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -441,6 +475,95 @@ const styles = StyleSheet.create({
   subscriptionArrow: {
     fontSize: 20,
     color: '#666',
+  },
+  // Upcoming ride card styles
+  upcomingRideCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007AFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  rideCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  rideStatusBadge: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  rideStatusText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  rideFare: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+  },
+  rideLocations: {
+    marginBottom: 12,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 2,
+  },
+  pickupDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#007AFF',
+    marginRight: 12,
+  },
+  dropoffDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4CAF50',
+    marginRight: 12,
+  },
+  locationText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  locationLine: {
+    width: 2,
+    height: 16,
+    backgroundColor: '#e1e1e1',
+    marginLeft: 6,
+    marginVertical: 4,
+  },
+  driverInfo: {
+    marginBottom: 8,
+  },
+  driverName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 2,
+  },
+  vehicleInfo: {
+    fontSize: 14,
+    color: '#666',
+  },
+  viewRideText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });
 

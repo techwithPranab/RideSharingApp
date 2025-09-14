@@ -258,40 +258,14 @@ export class RideOfferService {
   ): Promise<{ offers: IRideOffer[], total: number }> {
     try {
       const skip = (page - 1) * limit;
-      const query: any = {
+
+      // Build base match conditions that will be included in $geoNear query
+      const baseMatchConditions: any = {
         status: RideOfferStatus.PUBLISHED,
         availableSeats: { $gt: 0 }
       };
 
-      // Source location filter
-      if (filters.source) {
-        const radius = filters.source.radius || 5000; // 5km default
-        query['source.coordinates'] = {
-          $near: {
-            $geometry: {
-              type: 'Point',
-              coordinates: [filters.source.longitude, filters.source.latitude]
-            },
-            $maxDistance: radius
-          }
-        };
-      }
-
-      // Destination location filter
-      if (filters.destination) {
-        const radius = filters.destination.radius || 5000; // 5km default
-        query['destination.coordinates'] = {
-          $near: {
-            $geometry: {
-              type: 'Point',
-              coordinates: [filters.destination.longitude, filters.destination.latitude]
-            },
-            $maxDistance: radius
-          }
-        };
-      }
-
-      // Date and time filters
+      // Add date and time filters to base conditions
       if (filters.departureDate) {
         const startOfDay = new Date(filters.departureDate);
         startOfDay.setHours(0, 0, 0, 0);
@@ -299,14 +273,14 @@ export class RideOfferService {
         const endOfDay = new Date(filters.departureDate);
         endOfDay.setHours(23, 59, 59, 999);
 
-        query['schedule.departureDate'] = {
+        baseMatchConditions['schedule.departureDate'] = {
           $gte: startOfDay,
           $lte: endOfDay
         };
       }
 
       if (filters.departureTimeRange) {
-        query['schedule.departureTime'] = {
+        baseMatchConditions['schedule.departureTime'] = {
           $gte: filters.departureTimeRange.start,
           $lte: filters.departureTimeRange.end
         };
@@ -314,32 +288,153 @@ export class RideOfferService {
 
       // Price filter
       if (filters.maxPrice) {
-        query['pricing.pricePerSeat'] = {
+        baseMatchConditions['pricing.pricePerSeat'] = {
           $lte: filters.maxPrice
         };
       }
 
       // Seats filter
       if (filters.minSeats) {
-        query.availableSeats = {
+        baseMatchConditions.availableSeats = {
           $gte: filters.minSeats
         };
       }
 
-      // Vehicle type filter
-      if (filters.vehicleType) {
-        // This would require populating vehicle data
-        // For now, we'll skip this filter
+      let pipeline: any[] = [];
+
+      // Handle geospatial queries - $geoNear must be first stage
+      if (filters.source) {
+        const radius = filters.source.radius || 5000; // 5km default
+        pipeline.push({
+          $geoNear: {
+            near: {
+              type: 'Point',
+              coordinates: [filters.source.longitude, filters.source.latitude]
+            },
+            distanceField: 'sourceDistance',
+            maxDistance: radius,
+            spherical: true,
+            key: 'source.coordinates',
+            query: baseMatchConditions // Include all match conditions in the geoNear query
+          }
+        });
+      } else if (filters.destination) {
+        const radius = filters.destination.radius || 5000; // 5km default
+        pipeline.push({
+          $geoNear: {
+            near: {
+              type: 'Point',
+              coordinates: [filters.destination.longitude, filters.destination.latitude]
+            },
+            distanceField: 'destinationDistance',
+            maxDistance: radius,
+            spherical: true,
+            key: 'destination.coordinates',
+            query: baseMatchConditions // Include all match conditions in the geoNear query
+          }
+        });
+      } else {
+        // No geospatial filters - use regular $match as first stage
+        pipeline.push({ $match: baseMatchConditions });
       }
 
-      const offers = await RideOffer.find(query)
-        .populate('driverId', 'firstName lastName phoneNumber averageRating')
-        .populate('vehicleId', 'make model licensePlate type')
-        .sort({ 'schedule.departureDate': 1, 'schedule.departureTime': 1 })
-        .skip(skip)
-        .limit(limit);
+      // Add destination filter if we used source for $geoNear
+      if (filters.source && filters.destination) {
+        const radius = filters.destination.radius || 5000; // 5km default
+        const radiusInRadians = radius / 6371000; // Convert meters to radians (Earth radius in meters)
+        
+        pipeline.push({
+          $match: {
+            'destination.coordinates': {
+              $geoWithin: {
+                $centerSphere: [
+                  [filters.destination.longitude, filters.destination.latitude],
+                  radiusInRadians
+                ]
+              }
+            }
+          }
+        });
+      }
 
-      const total = await RideOffer.countDocuments(query);
+      // Add sorting
+      pipeline.push({
+        $sort: {
+          'schedule.departureDate': 1,
+          'schedule.departureTime': 1
+        }
+      });
+
+      // Get total count first (before pagination)
+      const countPipeline = [...pipeline, { $count: 'total' }];
+      const countResult = await RideOffer.aggregate(countPipeline);
+      const total = countResult.length > 0 ? countResult[0].total : 0;
+
+      // Add pagination
+      pipeline.push({ $skip: skip });
+      pipeline.push({ $limit: limit });
+
+      // Add population stages
+      pipeline.push(
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'driverId',
+            foreignField: '_id',
+            as: 'driverId'
+          }
+        },
+        {
+          $unwind: { path: '$driverId', preserveNullAndEmptyArrays: true }
+        },
+        {
+          $lookup: {
+            from: 'vehicles',
+            localField: 'vehicleId',
+            foreignField: '_id',
+            as: 'vehicleId'
+          }
+        },
+        {
+          $unwind: { path: '$vehicleId', preserveNullAndEmptyArrays: true }
+        },
+        {
+          $project: {
+            offerId: 1,
+            source: 1,
+            destination: 1,
+            stops: 1,
+            schedule: 1,
+            pricing: 1,
+            availableSeats: 1,
+            bookedSeats: 1,
+            totalBookings: 1,
+            specialInstructions: 1,
+            status: 1,
+            createdAt: 1,
+            publishedAt: 1,
+            sourceDistance: 1,
+            destinationDistance: 1,
+            driverId: {
+              _id: 1,
+              firstName: 1,
+              lastName: 1,
+              phoneNumber: 1,
+              averageRating: 1
+            },
+            vehicleId: {
+              _id: 1,
+              make: 1,
+              model: 1,
+              licensePlate: 1,
+              type: 1
+            }
+          }
+        }
+      );
+
+      // Execute aggregation pipeline
+      const offers = await RideOffer.aggregate(pipeline);
 
       return { offers, total };
     } catch (error) {
@@ -426,27 +521,49 @@ export class RideOfferService {
     }
   }
 
-  /**
-   * Cancel ride offer
+    /**
+   * Cancel a ride offer and handle all related bookings
    */
   static async cancelRideOffer(
     offerId: string,
     driverId: string,
-    reason?: string
-  ): Promise<IRideOffer> {
+    reason: string
+  ): Promise<{ success: boolean; message: string; data?: any }> {
     try {
       const rideOffer = await RideOffer.findOne({ offerId, driverId });
 
       if (!rideOffer) {
-        throw new Error('Ride offer not found or unauthorized');
+        return { success: false, message: 'Ride offer not found or unauthorized' };
       }
 
+      if (rideOffer.status === RideOfferStatus.COMPLETED || rideOffer.status === RideOfferStatus.CANCELLED) {
+        return { success: false, message: 'Cannot cancel this ride offer' };
+      }
+
+      // Import BookingService here to avoid circular dependency
+      const { BookingService } = await import('./bookingService');
+
+      // Cancel all associated bookings
+      const bookingResult = await BookingService.cancelBookingsByDriver(
+        rideOffer._id.toString(),
+        driverId,
+        reason
+      );
+
+      // Cancel the ride offer
       await rideOffer.cancel(reason);
 
-      return rideOffer;
+      return {
+        success: true,
+        message: 'Ride offer cancelled successfully',
+        data: {
+          rideOffer,
+          cancelledBookings: bookingResult.cancelledBookings || []
+        }
+      };
     } catch (error) {
       console.error('Error cancelling ride offer:', error);
-      throw error;
+      return { success: false, message: 'Failed to cancel ride offer' };
     }
   }
 
@@ -473,43 +590,34 @@ export class RideOfferService {
   }
 
   /**
-   * Book seats in a ride offer
+   * Book seats in a ride offer using new booking system
    */
   static async bookSeats(
     offerId: string,
-    seatsToBook: number
-  ): Promise<{ success: boolean; message: string; rideOffer?: IRideOffer }> {
+    seatsToBook: number,
+    riderId: string,
+    paymentMethodId?: string
+  ): Promise<{ success: boolean; message: string; booking?: any }> {
     try {
-      const rideOffer = await RideOffer.findOne({ offerId });
+      // Import BookingService here to avoid circular dependency
+      const { BookingService } = await import('./bookingService');
 
-      if (!rideOffer) {
-        return { success: false, message: 'Ride offer not found' };
+      const bookingData: any = {
+        rideOfferId: offerId,
+        riderId,
+        seatsBooked: seatsToBook
+      };
+
+      if (paymentMethodId) {
+        bookingData.paymentMethodId = paymentMethodId;
       }
 
-      if (rideOffer.status !== RideOfferStatus.PUBLISHED) {
-        return { success: false, message: 'Ride offer is not available for booking' };
-      }
-
-      if (rideOffer.availableSeats < seatsToBook) {
-        return { success: false, message: 'Not enough seats available' };
-      }
-
-      // Update available seats and booked seats
-      rideOffer.availableSeats -= seatsToBook;
-      rideOffer.bookedSeats += seatsToBook;
-      rideOffer.totalBookings += 1;
-
-      // If all seats are booked, mark as completed
-      if (rideOffer.availableSeats === 0) {
-        rideOffer.status = RideOfferStatus.COMPLETED;
-      }
-
-      await rideOffer.save();
+      const result = await BookingService.createBooking(bookingData);
 
       return {
-        success: true,
-        message: `Successfully booked ${seatsToBook} seat(s)`,
-        rideOffer
+        success: result.success,
+        message: result.message,
+        booking: result.booking
       };
     } catch (error) {
       console.error('Error booking seats:', error);

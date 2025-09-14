@@ -70,6 +70,16 @@ export type OfferRideStackParamList = {
   };
   MyOffers: undefined;
   OfferDetails: { offerId: string };
+  CancelRideOffer: { 
+    offerId: string; 
+    rideOffer: {
+      source: { name: string };
+      destination: { name: string };
+      departureDateTime: string;
+      pricing: { pricePerSeat: number; seats: number };
+      bookedSeats: number;
+    };
+  };
 };
 
 // Earnings stack params

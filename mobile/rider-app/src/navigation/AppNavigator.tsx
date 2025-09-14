@@ -3,20 +3,20 @@
  * Handles authentication flow and main app navigation
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useSelector } from 'react-redux';
-import { NotificationProvider } from '../components/NotificationProvider';
+import { useSelector, useDispatch } from 'react-redux';
 
 import { RootStackParamList, TabParamList } from '../types';
+import { clearAuth } from '../store/slices/authSlice';
 
 // Auth Screens
 import WelcomeScreen from '../screens/auth/WelcomeScreen';
-import PhoneLoginScreen from '../screens/auth/PhoneLoginScreen';
-import OTPVerificationScreen from '../screens/auth/OTPVerificationScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import EmailLoginScreen from '../screens/auth/EmailLoginScreen';
+import EmailOTPVerificationScreen from '../screens/auth/EmailOTPVerificationScreen';
 
 // Main App Screens
 import HomeScreen from '../screens/main/HomeScreen';
@@ -28,6 +28,9 @@ import LoadingScreen from '../screens/LoadingScreen';
 
 // Ride Screens
 import RideRequestScreen from '../screens/ride/RideRequestScreen';
+import RideSearchFormScreen from '../screens/ride/RideSearchFormScreen';
+import RideSearchResultsScreen from '../screens/ride/RideSearchResultsScreen';
+import RideBookingScreen from '../screens/ride/RideBookingScreen';
 import SearchingDriverScreen from '../screens/ride/SearchingDriverScreen';
 import RideTrackingScreen from '../screens/ride/RideTrackingScreen';
 import RideCompletedScreen from '../screens/ride/RideCompletedScreen';
@@ -122,51 +125,59 @@ const MainTabNavigator: React.FC = () => {
  * Main App Navigator
  */
 const AppNavigator: React.FC = () => {
+  const dispatch = useDispatch();
   const { isAuthenticated, isLoading } = useSelector((state: any) => state.auth);
+
+  // Invalidate user data and force login on app reload/restart
+  useEffect(() => {
+    // Clear auth state to force fresh login
+    dispatch(clearAuth());
+  }, [dispatch]);
 
   if (isLoading) {
     return <LoadingScreen />;
   }
 
   return (
-    <NotificationProvider>
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-            animation: 'slide_from_right',
-          }}
-        >
-          {!isAuthenticated ? (
+    <NavigationContainer>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      >
+                  {!isAuthenticated ? (
             // Auth Stack
             <>
               <Stack.Screen name="Welcome" component={WelcomeScreen} />
-              <Stack.Screen name="PhoneLogin" component={PhoneLoginScreen} />
-              <Stack.Screen name="OTPVerification" component={OTPVerificationScreen} />
               <Stack.Screen name="Register" component={RegisterScreen} />
+              <Stack.Screen name="EmailLogin" component={EmailLoginScreen} />
+              <Stack.Screen name="EmailOTPVerification" component={EmailOTPVerificationScreen} />
             </>
           ) : (
-            // Main App Stack
-            <>
-              <Stack.Screen name="MainTabs" component={MainTabNavigator} />
-              <Stack.Screen name="RideRequest" component={RideRequestScreen} />
-              <Stack.Screen name="SearchingDriver" component={SearchingDriverScreen} />
-              <Stack.Screen name="RideTracking" component={RideTrackingScreen} />
-              <Stack.Screen name="RideCompleted" component={RideCompletedScreen} />
-              <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-              <Stack.Screen name="PaymentMethods" component={PaymentMethodsScreen} />
-              <Stack.Screen name="TripHistory" component={TripHistoryScreen} />
-              <Stack.Screen name="AddressBook" component={AddressBookScreen} />
-              <Stack.Screen name="Support" component={SupportScreen} />
-              <Stack.Screen name="SubscriptionPlans" component={SubscriptionPlansScreen} />
-              <Stack.Screen name="SubscriptionPurchase" component={SubscriptionPurchaseScreen} />
-              <Stack.Screen name="SubscriptionManagement" component={SubscriptionManagementScreen} />
-              <Stack.Screen name="PlaceSearch" component={PlaceSearchScreen} />
-            </>
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
-    </NotificationProvider>
+          // Main App Stack
+          <>
+            <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+            <Stack.Screen name="RideRequest" component={RideRequestScreen} />
+            <Stack.Screen name="RideSearchForm" component={RideSearchFormScreen} />
+            <Stack.Screen name="RideSearchResults" component={RideSearchResultsScreen} />
+            <Stack.Screen name="RideBooking" component={RideBookingScreen} />
+            <Stack.Screen name="SearchingDriver" component={SearchingDriverScreen} />
+            <Stack.Screen name="RideTracking" component={RideTrackingScreen} />
+            <Stack.Screen name="RideCompleted" component={RideCompletedScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="PaymentMethods" component={PaymentMethodsScreen} />
+            <Stack.Screen name="TripHistory" component={TripHistoryScreen} />
+            <Stack.Screen name="AddressBook" component={AddressBookScreen} />
+            <Stack.Screen name="Support" component={SupportScreen} />
+            <Stack.Screen name="SubscriptionPlans" component={SubscriptionPlansScreen} />
+            <Stack.Screen name="SubscriptionPurchase" component={SubscriptionPurchaseScreen} />
+            <Stack.Screen name="SubscriptionManagement" component={SubscriptionManagementScreen} />
+            <Stack.Screen name="PlaceSearch" component={PlaceSearchScreen} />
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 };
 

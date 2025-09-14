@@ -31,7 +31,22 @@ const initialState: AuthState = {
 // Async thunks for API calls
 
 /**
- * Driver login with OTP
+ * Driver login with credentials (email/password or email/OTP)
+ */
+export const login = createAsyncThunk(
+  'auth/login',
+  async (credentials: { email: string; password?: string; otp?: string }, { rejectWithValue }) => {
+    try {
+      const response = await driverAPI.login(credentials);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Login failed');
+    }
+  }
+);
+
+/**
+ * Driver login with OTP (legacy)
  */
 export const loginDriver = createAsyncThunk(
   'auth/loginDriver',
@@ -223,7 +238,68 @@ const authSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // Login
+    // New Login (password/OTP)
+    builder
+      .addCase(login.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(login.fulfilled, (state, action) => {
+        console.log('Login fulfilled with payload:', action.payload);
+        
+        // Handle both response formats: direct or wrapped in data
+        const responseData = action.payload.data || action.payload;
+        
+        // Validate the response structure
+        if (!responseData?.user || !responseData?.token) {
+          console.error('Invalid login response:', action.payload);
+          state.isLoading = false;
+          state.error = 'Invalid server response. Please try again.';
+          return;
+        }
+
+        state.isLoading = false;
+        // Map backend response to frontend expected structure
+        state.driver = {
+          id: responseData.user.id,
+          email: responseData.user.email,
+          firstName: responseData.user.firstName,
+          lastName: responseData.user.lastName,
+          phoneNumber: responseData.user.phoneNumber || '',
+          role: responseData.user.role,
+          status: responseData.user.status || 'active',
+          isPhoneVerified: responseData.user.isPhoneVerified || false,
+          isEmailVerified: responseData.user.isEmailVerified || false,
+          averageRating: responseData.user.averageRating || 0,
+          totalRatings: 0,
+          kycStatus: responseData.user.kycStatus || 'not_submitted',
+          isOnline: false,
+          isAvailable: false,
+          vehicleIds: [],
+          vehicles: [],
+          totalEarnings: 0,
+          totalTrips: 0,
+          totalDistance: 0,
+          totalHours: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        state.token = responseData.token;
+        state.isAuthenticated = true;
+        state.error = null;
+        
+        // Save to AsyncStorage for screens that need direct access
+        AsyncStorage.setItem('driver_token', responseData.token);
+        AsyncStorage.setItem('driver_id', responseData.user.id);
+        
+        console.log('Login successful, driver authenticated:', responseData.user.id);
+      })
+      .addCase(login.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Legacy Login
     builder
       .addCase(loginDriver.pending, (state) => {
         state.isLoading = true;

@@ -87,7 +87,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
         formatDate(value)
       );
     } else {
-      const options: Array<{ label: string; value: Date }> = [];
+      const options: { label: string; value: Date }[] = [];
       const today = new Date();
 
       options.push({
